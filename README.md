@@ -238,10 +238,10 @@ This is done as follows:
 - The second-least-significant bit (bit 1) is 1 if `-s` is passed
 (i.e. the user wants serialization mode).
 
-- The third-most-significant bit (bit 2) is 1 if `-d` is passed
+- The third-least-significant bit (bit 2) is 1 if `-d` is passed
 (i.e. the user wants deserialization mode).
 
-- The fourth-most-significant bit (bit 3) is 1 if `-c` is passed
+- The fourth-least-significant bit (bit 3) is 1 if `-c` is passed
 (i.e. the user wants to "clobber" existing files).
 
 If `validargs` returns -1 indicating failure, your program must call
