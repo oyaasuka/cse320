@@ -290,7 +290,7 @@ bits are set, other bits clear).
 
 - Input: `bin/transplant -c -d`.  Setting: 0x0. This is an error case because the
 specified argument ordering is invalid (`-c` is before `-d`).
-In this case `validargs` returns 0, leaving `global_options` unset.
+In this case `validargs` returns -1, leaving `global_options` unset.
 
 # Part 2: Serialized Data Format
 
