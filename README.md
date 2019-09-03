@@ -320,7 +320,7 @@ of the record.  The possible record types are listed below.
 Following the type are four bytes that specify the depth in the tree for this
 record, as detailed below.  The depth is specified as an unsigned 32-bit
 integer in *big-endian* format (most significant byte first).
-Following the type are 8 bytes that specify the size of the record as
+Following the depth are 8 bytes that specify the size of the record as
 an unsigned 64-bit integer, also in big-endian format.  The size of the
 record is the total number of bytes comprising the record, including
 the header bytes as well as any additional data after the header.
