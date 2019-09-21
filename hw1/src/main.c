@@ -34,10 +34,12 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;}
     }
     else if((global_options >>2) & 1){
-        if(deserialize()==0)
-            return EXIT_SUCCESS;
-        else
-            return EXIT_FAILURE;
+        if(deserialize()==0){
+            fflush(stdout);
+            return EXIT_SUCCESS;}
+        else{
+            fflush(stdout);
+            return EXIT_FAILURE;}
     }
     fflush(stdout);
     return EXIT_FAILURE;

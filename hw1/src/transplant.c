@@ -277,12 +277,14 @@ int deserialize_directory(int depth) {
         }
         *p = '\0';
             
-        path_push(name_buf);
+        if(path_push(name_buf))
+            return -1;
     
         if(S_ISREG(mode)){
             if(deserialize_file(depth))
                 return -1;
-            path_pop();
+            if(path_pop())
+                return -1;
             
         }
         else if(S_ISDIR(mode)){
@@ -292,9 +294,9 @@ int deserialize_directory(int depth) {
                     return -1;
                 }
             }
-            mkdir(path_buf, 0700);
-            chmod(path_buf, mode & 0777);
-            deserialize_directory(depth+1);
+            if(mkdir(path_buf, 0700)) return -1;
+            if(chmod(path_buf, mode & 0777)) return -1;
+            if(deserialize_directory(depth+1)) return -1;
         }
         
         
@@ -410,6 +412,8 @@ int deserialize_file(int depth){
     
 
     FILE *f = fopen(path_buf, "w");
+    if(f == NULL)
+        return -1;
     for(i=0;i<(size_of_record-16);i++){
         fputc(getchar(),f);
     }
@@ -452,8 +456,8 @@ int serialize_directory(int depth) {
         if(streq(curname, ".") || streq(curname, ".."))
             continue;
         
-        path_push(curname);
-        stat(path_buf, &stat_buf);
+        if(path_push(curname)) return -1;
+        if(stat(path_buf, &stat_buf)) return -1;
         
         if(S_ISREG(stat_buf.st_mode)){
             directory_entry(depth, stat_buf.st_mode, stat_buf.st_size, curname);
@@ -461,15 +465,15 @@ int serialize_directory(int depth) {
             if(serialize_file(depth,stat_buf.st_size))
                 return -1;
             
-            path_pop();
+            if(path_pop()) return -1;
             continue;    
         }
         else if(S_ISDIR(stat_buf.st_mode)){
             directory_entry(depth, stat_buf.st_mode, stat_buf.st_size, curname);
-            serialize_directory(depth+1);
+            if(serialize_directory(depth+1)) return -1;
         }
         else{
-            path_pop();
+            if(path_pop()) return -1;
             return -1;
         }
 
@@ -558,7 +562,7 @@ int deserialize() {
     // To be implemented.
     char *p =path_buf;
     if( *p== '\0'){
-        path_init(".");
+        if(path_init(".")) return -1;
     }
 
     DIR *d = opendir(path_buf);
@@ -567,7 +571,7 @@ int deserialize() {
         closedir(d);
     }
     else{
-        mkdir(path_buf, 0700);
+        if(mkdir(path_buf, 0700)) return -1;
     }
     
     if(get_se_transmission_bits(START_OF_TRANSMISSION))
