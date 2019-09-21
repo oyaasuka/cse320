@@ -48,3 +48,4 @@ Test(basecode_tests_suite, help_system_test) {
                  "Program exited with %d instead of EXIT_SUCCESS",
 		 return_code);
 }
+

@@ -1,6 +1,9 @@
 #include "const.h"
 #include "transplant.h"
 #include "debug.h"
+/*below is I add*/
+#include <stdlib.h>
+#include "template.h"
 
 #ifdef _STRING_H
 #error "Do not #include <string.h>. You will get a ZERO."
@@ -59,7 +62,7 @@ static char *record_type_name(int i) {
  * @details  This function copies its null-terminated argument string into
  * path_buf, including its terminating null byte.
  * The function fails if the argument string, including the terminating
- * null byte, is longer than the size of path_buf.  The path_length variable 
+ * null byte, is longer than the size of path_buf.  The path_length variable
  * is set to the length of the string in path_buf, not including the terminating
  * null byte.
  *
@@ -68,8 +71,24 @@ static char *record_type_name(int i) {
  */
 int path_init(char *name) {
     // To be implemented.
-    return -1;
+    int lenOfName = strLen(name);
+    char *p = path_buf;
+    
+    if(lenOfName >= (sizeof(path_buf)/sizeof(*p))){
+        return -1;
+    }
+
+    else{
+        while(*name !='\0'){
+            *(p++) = *(name++);     
+        }
+        *p = '\0';
+        path_length = lenOfName;
+        return 0;   
+    }
 }
+
+
 
 /*
  * @brief  Append an additional component to the end of the pathname in path_buf.
@@ -79,14 +98,37 @@ int path_init(char *name) {
  * The length of the new string, including the terminating null byte, must be
  * no more than the size of path_buf.  The variable path_length is updated to
  * remain consistent with the length of the string in path_buf.
- * 
+ *
  * @param  The string to be appended to the path in path_buf.  The string must
  * not contain any occurrences of the path separator character '/'.
  * @return 0 in case of success, -1 otherwise.
  */
 int path_push(char *name) {
     // To be implemented.
-    return -1;
+    int lenOfName = strLen(name);
+    char *p = path_buf;
+    
+    if(path_length+lenOfName+1 >= (sizeof(path_buf)/sizeof(*p))){
+        return -1;    
+    }  
+    else{
+        path_buf[path_length] = '/';
+        
+        p+=path_length;
+        p++;
+
+        while(*name!='\0'){
+            *(p++) = *(name++);         
+        }
+        *p = '\0';    
+        
+        path_length += lenOfName;
+        path_length++;
+        
+        return 0; 
+    }
+    
+    
 }
 
 /*
@@ -103,7 +145,26 @@ int path_push(char *name) {
  */
 int path_pop() {
     // To be implemented.
-    return -1;
+    char *p0 = path_buf;
+    if(path_length == 0||*p0 =='\0'){
+        return -1;    
+    }
+    else{
+        char *p1;
+        p1 = p0;
+        p1+=path_length;
+        p1--;
+
+        while(p1!=p0 && *p1 !='/'){
+            path_length--;
+            p1--;
+        }
+        path_length--;
+        *p1 = '\0';
+
+        
+        return 0;     
+    }
 }
 
 /*
@@ -125,7 +186,149 @@ int path_pop() {
  */
 int deserialize_directory(int depth) {
     // To be implemented.
-    return -1;
+    int dep;
+    char first = getchar();
+    
+    if(first == EOF)
+        return 0;
+    
+    if(check_start_directory(START_OF_DIRECTORY,depth, first))
+        return -1;
+    
+    
+    
+    char c;
+    int i, size_of_record, mode;
+    
+    
+    
+    
+    while(1){
+        dep=0;
+        size_of_record = 0;
+        mode =0;
+        // to check data entry
+        
+        // check magic code
+        c = getchar();
+        if(c == EOF || c != '\x0c')
+            return -1;
+    
+        c = getchar();
+        if(c == EOF || c!='\x0d') 
+            return -1;
+    
+        c = getchar();
+        if(c == EOF || c !='\xed') 
+            return -1;
+        // check type, if 03 type jump out loop
+        c = getchar();
+        if(c == END_OF_DIRECTORY)
+            break;
+        if(c == EOF || c != DIRECTORY_ENTRY)
+            return -1;
+        
+        //check depth
+        for(i=0;i<4;i++){
+            c = getchar();
+        
+            if(c == EOF)
+                return -1;
+        
+            dep += ((c&0xff)<<(24-i*8));
+        } 
+        if(dep != depth)
+            return -1;
+        
+        //count total size of this record
+        
+        for(i=0;i<8;i++){
+            c = getchar();
+        
+            if(c == EOF)
+                return -1;
+        
+            size_of_record += ((c&0xff)<<(56-i*8));
+        } 
+        if(size_of_record <= 28)
+            return -1;
+        
+        // to record the mode and judge
+        
+        for(i=0;i<4;i++){
+            c = getchar();
+        
+            if(c == EOF)
+                return -1;
+        
+            mode += ((c&0xff)<<(24-i*8));
+            
+        } 
+        
+        for(i=0;i<8;i++)
+            getchar();
+            
+        char *p = name_buf;
+
+        for(i=28;i<size_of_record;i++){
+            *(p++) = getchar();
+        }
+        *p = '\0';
+            
+        path_push(name_buf);
+    
+        if(S_ISREG(mode)){
+            if(deserialize_file(depth))
+                return -1;
+            path_pop();
+            
+        }
+        else if(S_ISDIR(mode)){
+            struct stat buf;
+            if(stat(path_buf, &buf) == 0){
+                if(((global_options >>3)&1) == 0){
+                    return -1;
+                }
+            }
+            mkdir(path_buf, 0700);
+            chmod(path_buf, mode & 0777);
+            deserialize_directory(depth+1);
+        }
+        
+        
+        
+        
+          
+    }
+    dep = 0;
+    size_of_record = 0;
+    
+    for(i=0;i<4;i++){
+        c = getchar();
+        
+        if(c == EOF)
+            return -1;
+        
+        dep += ((c&0xff)<<(24-i*8));
+    } 
+    
+    if(dep != depth)
+        return -1;
+    
+    for(i=0;i<8;i++){
+        c = getchar();
+        
+        if(c == EOF)
+            return -1;
+        
+        size_of_record += ((c&0xff)<<(56-i*8));
+    } 
+    if(size_of_record != 16)
+            return -1;
+
+    
+    
+    return 0;
 }
 
 /*
@@ -145,7 +348,75 @@ int deserialize_directory(int depth) {
  * the FILE_DATA record from the standard input or while re-creating the
  * deserialized file.
  */
-int deserialize_file(int depth);
+int deserialize_file(int depth){
+    char c;  
+    int i, size_of_record =0, dep =0; 
+
+
+    // check magic code
+        c = getchar();
+        if(c == EOF || c != '\x0c')
+            return -1;
+    
+        c = getchar();
+        if(c == EOF || c!='\x0d') 
+            return -1;
+    
+        c = getchar();
+        if(c == EOF || c !='\xed') 
+            return -1;
+
+    // check type
+        c = getchar();
+        if(c == EOF || c != FILE_DATA)
+            return -1;
+
+    //check depth
+        for(i=0;i<4;i++){
+            c = getchar();
+        
+            if(c == EOF)
+                return -1;
+        
+            dep += ((c&0xff)<<(24-i*8));
+        } 
+        if(dep != depth)
+            return -1;
+
+    //count total size of this record
+        
+        for(i=0;i<8;i++){
+            c = getchar();
+        
+            if(c == EOF)
+                return -1;
+        
+            size_of_record += ((c&0xff)<<(56-i*8));
+        } 
+        if(size_of_record < 16)
+            return -1;
+
+    //check if file exist
+    struct stat buf;
+    if(stat(path_buf, &buf) == 0){
+        if(((global_options >>3)&1) == 0){
+            return -1;
+        }
+    }
+        
+
+    
+
+    FILE *f = fopen(path_buf, "w");
+    for(i=0;i<(size_of_record-16);i++){
+        fputc(getchar(),f);
+    }
+    
+
+    fclose(f);
+    
+    return 0;
+}
 
 /*
  * @brief  Serialize the contents of a directory as a sequence of records written
@@ -166,6 +437,44 @@ int deserialize_file(int depth);
  */
 int serialize_directory(int depth) {
     // To be implemented.
+    struct dirent *dp;
+    DIR *dir = opendir(path_buf);
+    struct stat stat_buf;
+    
+
+    create_header(START_OF_DIRECTORY, depth);
+    
+    while((dp = readdir(dir))!=NULL){
+        char *curname = dp->d_name;
+        
+        if(streq(curname, ".") || streq(curname, ".."))
+            continue;
+        
+        path_push(curname);
+        stat(path_buf, &stat_buf);
+        
+        if(S_ISREG(stat_buf.st_mode)){
+            directory_entry(depth, stat_buf.st_mode, stat_buf.st_size, curname);
+            
+            serialize_file(depth,stat_buf.st_size);
+            
+            path_pop();
+            continue;    
+        }
+        else if(S_ISDIR(stat_buf.st_mode)){
+            directory_entry(depth, stat_buf.st_mode, stat_buf.st_size, curname);
+            serialize_directory(depth+1);
+        }
+        else{
+            path_pop();
+            return -1;
+        }
+
+    }
+    
+    create_header(END_OF_DIRECTORY, depth);
+    
+    closedir(dir);
     return -1;
 }
 
@@ -184,6 +493,17 @@ int serialize_directory(int depth) {
  */
 int serialize_file(int depth, off_t size) {
     // To be implemented.
+    FILE *f = fopen(path_buf, "r");
+
+    file_data(depth, size);
+    char ch = fgetc(f);
+    while(ch != EOF){
+        putchar(ch);
+        ch = fgetc(f);
+    }
+    
+    
+    fclose(f);
     return -1;
 }
 
@@ -201,6 +521,15 @@ int serialize_file(int depth, off_t size) {
  */
 int serialize() {
     // To be implemented.
+    char *p =path_buf;
+    if( *p== '\0'){
+        path_init(".");
+    }
+    
+    create_header(START_OF_TRANSMISSION, 0);
+    serialize_directory(1);
+    create_header(END_OF_TRANSMISSION, 0);
+    fflush(stdout);
     return -1;
 }
 
@@ -217,9 +546,34 @@ int serialize() {
  *
  * @return 0 if deserialization completes without error, -1 if an error occurs.
  */
+
 int deserialize() {
     // To be implemented.
-    return -1;
+    char *p =path_buf;
+    if( *p== '\0'){
+        path_init(".");
+    }
+
+    DIR *d = opendir(path_buf);
+    if(d){
+        
+        closedir(d);
+    }
+    else{
+        mkdir(path_buf, 0700);
+    }
+    
+    if(get_se_transmission_bits(START_OF_TRANSMISSION))
+        return -1;
+    
+    if(deserialize_directory(1))
+        return -1;
+    
+    
+    if(get_se_transmission_bits(END_OF_TRANSMISSION))
+        return -1;
+    
+    return 0;
 }
 
 /**
@@ -241,5 +595,79 @@ int deserialize() {
 int validargs(int argc, char **argv)
 {
     // To be implemented.
+    if(streq(*(argv+1), "-h")){
+        global_options |= (1u << 0);
+        return 0;
+    }
+
+    else if(streq(*(argv+1), "-s")){
+        argv++;
+
+        int i =1;
+        while(i != argc){
+            
+            char *cur_flag = *argv;
+            
+            if(streq(cur_flag, "-c")){
+                return -1;
+            }
+            if(streq(cur_flag, "-p")){//note
+
+                if(i>= argc -1){
+                    return -1;
+                }
+
+                if(**(argv+1) != '-'){
+                    //printf("%s\n", *(argv+1));
+                    path_init(*(argv+1));// or remember to get current directory!
+                }
+                else{
+                    return -1;
+                }
+            }
+            
+            //printf("%s %d\n", *argv, i); 
+            argv++;
+            i++;
+        }
+        global_options |= (1u << 1);
+        return 0;
+    }
+    
+    else if(streq(*(argv+1), "-d")){
+        argv++;
+
+        int i =1;
+        while(i != argc){
+            
+            char *cur_flag = *argv;
+            
+            if(streq(cur_flag, "-c")){
+                global_options |= (1u << 3);
+            }
+            if(streq(cur_flag, "-p")){//note
+
+                if(i>= argc -1){
+                    global_options &= ~(1u << 3);
+                    return -1;
+                }
+
+                if(**(argv+1) != '-'){
+                    //printf("%s\n", *(argv+1));
+                    path_init(*(argv+1));// or remember to get current directory!
+                }
+                else{ 
+                    global_options &= ~(1u << 3);
+                    return -1;
+                }
+            }
+            argv++;
+            i++;
+        }
+
+        global_options |= (1u << 2);
+        return 0;
+    }
+    
     return -1;
 }
