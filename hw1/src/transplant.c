@@ -118,6 +118,8 @@ int path_push(char *name) {
         p++;
 
         while(*name!='\0'){
+            if(*name == '/')
+                return -1;
             *(p++) = *(name++);         
         }
         *p = '\0';    
@@ -456,7 +458,8 @@ int serialize_directory(int depth) {
         if(S_ISREG(stat_buf.st_mode)){
             directory_entry(depth, stat_buf.st_mode, stat_buf.st_size, curname);
             
-            serialize_file(depth,stat_buf.st_size);
+            if(serialize_file(depth,stat_buf.st_size))
+                return -1;
             
             path_pop();
             continue;    
@@ -475,7 +478,7 @@ int serialize_directory(int depth) {
     create_header(END_OF_DIRECTORY, depth);
     
     closedir(dir);
-    return -1;
+    return 0;
 }
 
 /*
@@ -495,6 +498,9 @@ int serialize_file(int depth, off_t size) {
     // To be implemented.
     FILE *f = fopen(path_buf, "r");
 
+    if(f==NULL)
+        return -1;
+
     file_data(depth, size);
     char ch = fgetc(f);
     while(ch != EOF){
@@ -504,7 +510,7 @@ int serialize_file(int depth, off_t size) {
     
     
     fclose(f);
-    return -1;
+    return 0;
 }
 
 /**
@@ -527,7 +533,8 @@ int serialize() {
     }
     
     create_header(START_OF_TRANSMISSION, 0);
-    serialize_directory(1);
+    if(serialize_directory(1))
+        return -1;
     create_header(END_OF_TRANSMISSION, 0);
     fflush(stdout);
     return -1;
