@@ -8,3 +8,11 @@
 
 #define LEGAL_OPTIONS "lsu"
 #define USAGE "rolo [ person1 person2 ...] [ -l -s -u user ] "
+
+extern void save_and_exit();
+extern void user_eof ();
+extern void roloexit();
+extern void save_to_disk ();
+/*extern void write_rolo();*/
+extern int cathelpfile();
+extern void clear_the_screen ();

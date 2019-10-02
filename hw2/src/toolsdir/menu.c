@@ -12,7 +12,7 @@ menu_match (
 
      ptr_rval,ptr_ur,prompt,casetest,isub,r_no_match,r_ambiguous,n_options,
      va_alist
-     
+
    )
 
   int *ptr_rval;
@@ -24,7 +24,7 @@ menu_match (
   int r_ambiguous;
   int n_options;
   va_dcl
-    
+
 {
 
   char sline[MAX_MENU_RESPONSE_LENGTH];
@@ -32,12 +32,12 @@ menu_match (
   int rvals[MAX_MENU_OPTIONS];
   int j,found,*addr,len,optionlen,rval,compare,blankindex;
   va_list pvar;
-        
+
   if (n_options > MAX_MENU_OPTIONS) return(MENU_ERROR);
   for (j = 0; j < MAX_MENU_RESPONSE_LENGTH; j++) line[j] = ' ';
-  
+
   /* grab all the menu options and return values.  */
-  
+
   blankindex = -1;
   va_start(pvar);
   for (j = 0; j < n_options; j++) {
@@ -48,13 +48,13 @@ menu_match (
       rvals[j] = va_arg(pvar,int);
   }
   va_end(pvar);
-  
+
   try_again :
-  
+
   /* get the user's response */
-  
+
   printf("%s",prompt);
-  switch (rval = getline(stdin,line,MAX_MENU_RESPONSE_LENGTH)) {
+  switch (rval = rolo_getline(stdin,line,MAX_MENU_RESPONSE_LENGTH)) {
     case AT_EOF :
       return(MENU_EOF);
       break;
@@ -68,41 +68,41 @@ menu_match (
      len = strlen(sline);
      break;
  }
-    
+
   found = 0;
   rval = MENU_NO_MATCH;
-  
+
   if (all_whitespace(sline)) {
      if (blankindex == -1) goto try_again;
      rval = MENU_MATCH;
      *ptr_rval = rvals[blankindex];
      goto rtn;
-  }     
-  
+  }
+
   for (j = 0; j < n_options; j ++) {
 
       /* if what he typed in is longer than any option it can't match */
-        
+
       optionlen = strlen(options[j]);
-      if (len > optionlen) continue;  
-      
+      if (len > optionlen) continue;
+
       /* if we aren't matching initial substrings, the response must */
       /* match exactly. */
-      
+
       if (!isub && len != optionlen) continue;
-      
+
       /* use different comparision functions depending on whether case */
       /* is important or not. */
-      
-      compare = casetest ? 
-                strncmp(sline,options[j],len) : 
+
+      compare = casetest ?
+                strncmp(sline,options[j],len) :
                 nocase_compare(sline,len,options[j],len);
-                
+
       /* if we must match exactly, if we find a match exit immediately. */
       /* if we can match on an initial substring, if we've already found */
       /* a match then we have an ambiguity, otherwise note that we've */
       /* matched and continue looking in case of ambiguities */
-                
+
       if (0 == compare) {
          if (!isub) {
             found = 1;
@@ -126,7 +126,7 @@ menu_match (
   }
 
   rtn :
-  
+
   switch (rval) {
     case MENU_MATCH :
       break;
@@ -146,9 +146,9 @@ menu_match (
       fprintf(stderr,"Impossible case value in menu_match\n");
       exit(-1);
   }
-      
+
   return(rval);
-  
+
 }
 
 
@@ -157,9 +157,9 @@ menu_yes_no (prompt,allow_help) char *prompt; int allow_help;
 {
   int menuval,rval;
   char *response;
-  
+
   redo :
-  
+
   if (!allow_help) {
      rval = menu_match (
           &menuval,&response,
@@ -237,14 +237,14 @@ menu_number_help_or_abort (prompt,abortstring,low,high,ptr_ival)
 {
   char *response,errprompt[80],numstring[MAX_MENU_RESPONSE_LENGTH];
   int rval,check;
-  
+
   if (!(check = (low <= high)))
      nbuffconcat(errprompt,1,"Please enter a non-negative number...\n");
   else
      sprintf(errprompt,"Please enter a number between %d and %d\n",low,high);
-  
-  reask :     
-     
+
+  reask :
+
   rval = menu_data_help_or_abort(prompt,abortstring,&response);
   switch (rval) {
     case MENU_EOF :
@@ -273,7 +273,7 @@ menu_yes_no_abort_or_help (prompt,abortstring,helpallowed,return_for_yes)
 
 /*
     Returns one of MENU_YES, MENU_NO, MENU_ABORT or MENU_HELP.
-    If !helpallowed, MENU_HELP will not be returned.  
+    If !helpallowed, MENU_HELP will not be returned.
     If return_for_yes is 0, hitting return will re-prompt.
     If it is 1, hitting return is like typing yes.
     If it is any other value, hitting return is like typing no.
@@ -281,15 +281,15 @@ menu_yes_no_abort_or_help (prompt,abortstring,helpallowed,return_for_yes)
 
   char *prompt;
   char *abortstring;
-  int helpallowed; 
+  int helpallowed;
   int return_for_yes;
 
 {
   int menuval,rval;
   char *response;
-  
+
   redo :
-  
+
   if (!helpallowed) {
      rval = menu_match (
           &menuval,&response,

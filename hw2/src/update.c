@@ -18,11 +18,11 @@
 #include "choices.h"
 
 
-char *get_new_value () 
+char *get_new_value ()
 {
   char buffer[200];
   int rval;
-  switch (rval = getline(stdin,buffer,199)) {
+  switch (rval = rolo_getline(stdin,buffer,199)) {
     case AT_EOF :
       user_eof();
       break;
@@ -35,38 +35,38 @@ char *get_new_value ()
       break;
   }
   return(copystr(buffer));
-}  
-  
+}
+
 
 Ptr_Rolo_Entry copy_entry (entry) Ptr_Rolo_Entry entry;
 {
-  Ptr_Rolo_Entry new_entry;        
-  int j,n;        
+  Ptr_Rolo_Entry new_entry;
+  int j,n;
   char **otherfields;
-  
+
   new_entry = (Ptr_Rolo_Entry) rolo_emalloc(sizeof(Rolo_Entry));
-  
+
   /* copy the basic fields, but get a new timestamp */
-  
+
   for (j = 0; j < N_BASIC_FIELDS - 1; j++) {
       set_basic_rolo_field(j,new_entry,copystr(get_basic_rolo_field(j,entry)));
   }
   set_basic_rolo_field(N_BASIC_FIELDS - 1,new_entry,timestring());
-  
+
   /* copy the user-defined fields, if necessary */
-  
+
   set_n_others(new_entry,n = get_n_others(entry));
   if (n > 0) {
      otherfields = (char **) rolo_emalloc(n * sizeof(char *));
      new_entry -> other_fields = otherfields;
-     for (j = 0; j < n; j++) {  
+     for (j = 0; j < n; j++) {
          set_other_field(j,new_entry,copystr(get_other_field(j,entry)));
      }
-  }     
+  }
   new_entry -> other_fields = 0;
-     
-  return(new_entry);     
-     
+
+  return(new_entry);
+
 }
 
 
@@ -79,23 +79,23 @@ rolo_update_mode (rlink) Ptr_Rolo_List rlink;
   int rval,menuval,findex,updated,newlen,n,nfields,j,name_changed;
   char *response,*s,*newfield,*newval,*other, **others;
   Ptr_Rolo_Entry entry,old_entry;
-        
+
   cancel_update :
-  
+
   entry = copy_entry(old_entry = get_entry(rlink));
 
   updated = 0;
   name_changed = 0;
-  
+
   redisplay :
-  
+
   display_entry_for_update(updated ? entry : old_entry);
   nfields = (N_BASIC_FIELDS - 1) + get_n_others(entry);
-  
-  reask :  
-  
-  cathelpfile(libdir("updatemenu"),0,0);  
-  
+
+  reask :
+
+  cathelpfile(libdir("updatemenu"),0,0);
+
   rval = menu_match (
        &menuval,&response,
        ": ",
@@ -105,11 +105,11 @@ rolo_update_mode (rlink) Ptr_Rolo_List rlink;
        "Help",U_HELP,
        "",U_END_UPDATE
     );
-    
-  switch (rval) {    
-    
+
+  switch (rval) {
+
     case MENU_MATCH :
-  
+
       switch (menuval) {
 
         case U_HELP :
@@ -142,18 +142,18 @@ rolo_update_mode (rlink) Ptr_Rolo_List rlink;
              changed = 1;
              return;
           }
-          else {   
+          else {
              printf("Updates ignored...\n");
              sleep(1);
              updated = 0;
              goto cancel_update;
           }
          break;
-       
+
       }
       break;
-     
-    case MENU_NO_MATCH : 
+
+    case MENU_NO_MATCH :
 
       /* check that the response is an integer within range */
 
@@ -191,7 +191,7 @@ rolo_update_mode (rlink) Ptr_Rolo_List rlink;
             }
             set_n_others(entry,get_n_others(entry) - 1);
          }
-         else {   
+         else {
             *s = '\0';
             newlen = strlen(other) + strlen(newval) + 2;
             newfield = rolo_emalloc(newlen);
@@ -221,12 +221,12 @@ rolo_update_mode (rlink) Ptr_Rolo_List rlink;
     case MENU_EOF :
       user_eof();
       break;
-      
-    default :      
+
+    default :
       fprintf(stderr,"Impossible return from update menu_match\n");
       save_and_exit(-1);
       break;
-     
+
   }
 
   goto redisplay;
