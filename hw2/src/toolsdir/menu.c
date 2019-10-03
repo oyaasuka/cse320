@@ -13,22 +13,23 @@ static char line[MAX_MENU_RESPONSE_LENGTH];
 
 int menu_match (
 
-     ptr_rval,ptr_ur,prompt,casetest,isub,r_no_match,r_ambiguous,n_options
+     int *ptr_rval,char **ptr_ur,char *prompt,int casetest,int isub,int r_no_match,int r_ambiguous,int n_options,...
      /*va_alist*/
 
    )
-
-  int *ptr_rval;
+{
+  /*int *ptr_rval;
   char **ptr_ur;
   char *prompt;
   int casetest;
   int isub;
   int r_no_match;
   int r_ambiguous;
-  int n_options;
+  int n_options;*/
   /*va_dcl*/
 
-{
+
+
 
   char sline[MAX_MENU_RESPONSE_LENGTH];
   char /**option,*/ *options[MAX_MENU_OPTIONS];
@@ -42,7 +43,7 @@ int menu_match (
   /* grab all the menu options and return values.  */
 
   blankindex = -1;
-  /*va_start(pvar);*/
+  va_start(pvar,n_options);
   for (j = 0; j < n_options; j++) {
       options[j] = va_arg(pvar,char *);
       if (0 == strlen(options[j])) {

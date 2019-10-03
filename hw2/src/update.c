@@ -53,7 +53,9 @@ Ptr_Rolo_Entry copy_entry (entry) Ptr_Rolo_Entry entry;
   /* copy the basic fields, but get a new timestamp */
 
   for (j = 0; j < N_BASIC_FIELDS - 1; j++) {
+      //char *tmp = get_basic_rolo_field(j,entry);
       set_basic_rolo_field(j,new_entry,copystr(get_basic_rolo_field(j,entry)));
+      //free(tmp);
   }
   set_basic_rolo_field(N_BASIC_FIELDS - 1,new_entry,timestring());
 
