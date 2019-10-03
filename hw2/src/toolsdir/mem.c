@@ -11,6 +11,8 @@
 /* Author: JP Massar */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "sys5.h"
 

@@ -25,6 +25,12 @@
 
 extern void write_rolo();
 extern void clearinit ();
+extern int read_rolodex();
+extern void rolo_reorder();
+extern void print_short ();
+extern void print_people ();
+extern void interactive_rolo ();
+extern int rlength();
 
 static char rolodir[DIRPATHLEN];        /* directory where rolo data is */
 static char filebuf[DIRPATHLEN];        /* stores result of homedir() */

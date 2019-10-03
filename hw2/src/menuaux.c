@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <ctype.h>
 
 #include "sys5.h"
@@ -16,13 +17,13 @@
 #include "datadef.h"
 
 
-rolo_menu_yes_no (prompt,rtn_default,help_allowed,helpfile,subject)
+int rolo_menu_yes_no (prompt,rtn_default,help_allowed,helpfile,subject)
 
   char *prompt;
   int rtn_default;
   int help_allowed;
   char *helpfile, *subject;
-  
+
 {
   int rval;
   reask :
@@ -33,7 +34,7 @@ rolo_menu_yes_no (prompt,rtn_default,help_allowed,helpfile,subject)
     case MENU_EOF :
       user_eof();
       break;
-    case MENU_HELP : 
+    case MENU_HELP :
       cathelpfile(libdir(helpfile),subject,1);
       goto reask;
       break;
@@ -41,32 +42,33 @@ rolo_menu_yes_no (prompt,rtn_default,help_allowed,helpfile,subject)
       return(rval);
       break;
   }
+  return EXIT_SUCCESS;
 }
-  
 
-rolo_menu_data_help_or_abort (prompt,helpfile,subject,ptr_response)
+
+int rolo_menu_data_help_or_abort (prompt,helpfile,subject,ptr_response)
 
   char *prompt, *helpfile, *subject;
   char **ptr_response;
-  
-{ 
+
+{
   int rval;
   reask :
   rval = menu_data_help_or_abort(prompt,ABORTSTRING,ptr_response);
   if (rval == MENU_HELP) {
      cathelpfile(libdir(helpfile),subject,1);
      goto reask;
-  }     
+  }
   return(rval);
 }
-     
 
-rolo_menu_number_help_or_abort (prompt,low,high,ptr_ival)
+
+int rolo_menu_number_help_or_abort (prompt,low,high,ptr_ival)
 
   char *prompt;
   int low,high,*ptr_ival;
-  
-{  
+
+{
   int rval;
   if (MENU_EOF == (rval = menu_number_help_or_abort (
                                prompt,ABORTSTRING,low,high,ptr_ival

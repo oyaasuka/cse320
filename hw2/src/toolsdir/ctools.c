@@ -2,9 +2,12 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef BSD42
 #include <strings.h>
+
 #endif
 
 #include "ctools.h"
@@ -81,7 +84,7 @@
 */
 
 
-extern char *malloc();
+/*extern char *malloc();*/
 
 
 char *emalloc (space) int space;
@@ -115,7 +118,7 @@ char *anewstr (astring) char *astring;
 }
 
 
-copy (dest,src,n)
+int copy (dest,src,n)
 
   /* copy n bytes */
 
@@ -124,10 +127,11 @@ copy (dest,src,n)
 
   { register int j = 0;
     while (j++ < n) *dest++ = *src++;
+    return 0;
   }
 
 
-fill (addr,ch,n)
+int fill (addr,ch,n)
 
   /* fill n sequential bytes with 'ch' */
 
@@ -137,24 +141,25 @@ fill (addr,ch,n)
 
   { register int j = 0;
     while (j++ < n) *addr++ = ch;
+    return 0;
   }
 
 
-to_upper_if_lower (ch)
+int to_upper_if_lower (ch)
 
   char ch;
 
   { return(islower(ch) ? toupper(ch) : ch); }
 
 
-to_lower_if_upper (ch)
+int to_lower_if_upper (ch)
 
   char ch;
 
   { return(isupper(ch) ? tolower(ch) : ch); }
 
 
-buffconcat (buffer,s1,s2)
+int buffconcat (buffer,s1,s2)
 
   /* concatenate two null terminated strings into a buffer. */
 
@@ -163,10 +168,11 @@ buffconcat (buffer,s1,s2)
   { while (*s1 != '\0') *buffer++ = *s1++;
     while (*s2 != '\0') *buffer++ = *s2++;
     *buffer = '\0';
+    return 0;
   }
 
 
-nbuffconcat (buffer,n,s1,s2,s3,s4,s5,s6)
+int nbuffconcat (buffer,n,s1,s2,s3,s4,s5,s6)
 
   /* concatenates up to 6 strings into a buffer.  Returns -1 if n */
   /* is not reasonable, otherwise returns 0. */
@@ -198,7 +204,7 @@ nbuffconcat (buffer,n,s1,s2,s3,s4,s5,s6)
 }
 
 
-slcompare (s1,l1,s2,l2)
+int slcompare (s1,l1,s2,l2)
 
   /* compare strings with possible nulls in them given their lengths */
   /* only returns EQUAL (0) or NOT EQUAL (-1) */
@@ -217,7 +223,7 @@ slcompare (s1,l1,s2,l2)
   }
 
 
-slge_compare (s1,l1,s2,l2)
+int slge_compare (s1,l1,s2,l2)
 
   /* returns -1 if s1 < s2; 1 if s2 < s1; 0 if s1 = s2 */
   /* ignores nulls in the strings */
@@ -239,7 +245,7 @@ slge_compare (s1,l1,s2,l2)
     return((l2 == l1) ? 0 : ((l1 < l2) ? -1 : 1));
   }
 
-nocase_compare (s1,l1,s2,l2)
+int nocase_compare (s1,l1,s2,l2)
 
   /* treats nulls as normal characters.  Returns same as slge_compare */
 
@@ -431,7 +437,7 @@ int ip_string_trim (oldstring,trimchars,pretrim,posttrim)
      while (T) {
        ch = *np;
        trim = (0 != index(trimchars,ch));
-       if (trim) *np == '\0';
+       /*if (trim) *np == '\0';*/
        if (!trim || np == oldstring) break;
        np--;
      }
@@ -455,6 +461,7 @@ char *string_upcase (astring) char *astring;
     *astring = to_upper_if_lower(*astring);
     astring++;
   }
+  return 0;
 }
 
 char *string_downcase (astring) char *astring;
@@ -463,10 +470,11 @@ char *string_downcase (astring) char *astring;
     *astring = to_lower_if_upper(*astring);
     astring++;
   }
+  return 0;
 }
 
 
-yes_or_no_check (astring) char *astring;
+int yes_or_no_check (astring) char *astring;
 
 /* returns 1 if yes, 0 if no, -1 if neither */
 /* works for 'Y' 'YES' 'NO' 'N' in any capitalization */
@@ -584,6 +592,7 @@ int sreverse (buffer,astring) char *buffer, *astring;
   register int last = strlen(astring);
   buffer[last--] = '\0';
   while (last >= 0) buffer[last--] = *astring++;
+  return 0;
 }
 
 char * ip_sreverse (astring) char *astring;
@@ -669,7 +678,7 @@ char *just_filename (path,new,perm) char *path; Bool new,perm;
 
 
 
-read_yes_or_no (iport,oport,prompt,helpstring,quitstring)
+int read_yes_or_no (iport,oport,prompt,helpstring,quitstring)
 
   /* prints prompt, then reads from port until it gets 'Y', 'N', 'YES' or */
   /* 'NO' (case independently).  If helpstring and/or quitstring are not */

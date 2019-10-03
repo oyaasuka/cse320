@@ -1,8 +1,11 @@
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <ctype.h>
+#include <unistd.h>
 
 #include "sys5.h"
 
@@ -30,14 +33,14 @@ Ptr_Rolo_List Current_Entry = 0;
 
 static char *rolofiledata;
 
-read_rolodex (fd) int fd;
+int read_rolodex (fd) int fd;
 
 {
   struct stat statdata;
   int filesize,i,j,k,start_of_others,warning_given;
-  Ptr_Rolo_Entry newentry,oldentry,currententry;
+  Ptr_Rolo_Entry newentry/*,oldentry,currententry*/;
   Ptr_Rolo_List newlink,rptr;
-  char *next_field,*next_other,*oldname,*currentname;
+  char *next_field,*next_other/*,*oldname,*currentname*/;
   char **other_pointers;
   int n_entries = 0;
 
@@ -161,7 +164,7 @@ read_rolodex (fd) int fd;
 }
 
 
-write_rolo_list (fp) FILE *fp;
+void write_rolo_list (fp) FILE *fp;
 
 /* write the entire in-core rolodex to a file */
 
@@ -196,9 +199,10 @@ void write_rolo (fp1,fp2) FILE *fp1; FILE *fp2;
 }
 
 
-display_basic_field (name,value,show,up) char *name; char *value; int show,up;
+void display_basic_field (name,value,show,up) char *name; char *value; int show,up;
 {
   int semi = 0;
+  semi+=0;/*!!!*/
   int i;
   if (all_whitespace(value) && !show) return;
   printf("%-25s",name);
@@ -218,7 +222,7 @@ display_basic_field (name,value,show,up) char *name; char *value; int show,up;
 }
 
 
-display_other_field (fieldstring) char *fieldstring;
+void display_other_field (fieldstring) char *fieldstring;
 {
   int already_put_sep = 0;
   int count = 0;
@@ -242,7 +246,7 @@ display_other_field (fieldstring) char *fieldstring;
 }
 
 
-summarize_entry_list (rlist,ss) Ptr_Rolo_List rlist; char *ss;
+void summarize_entry_list (rlist,ss) Ptr_Rolo_List rlist; char *ss;
 
 /* print out the Name field for each entry that is tagged as matched */
 /* and number each entry. */
@@ -265,7 +269,7 @@ summarize_entry_list (rlist,ss) Ptr_Rolo_List rlist; char *ss;
 }
 
 
-display_field_names ()
+void display_field_names ()
 
 /* display and number each standard field name. */
 
@@ -284,7 +288,7 @@ display_field_names ()
 }
 
 
-display_entry (entry) Ptr_Rolo_Entry entry;
+void display_entry (entry) Ptr_Rolo_Entry entry;
 
 {
   int j,n_others;
@@ -316,7 +320,7 @@ display_entry (entry) Ptr_Rolo_Entry entry;
 }
 
 
-display_entry_for_update (entry) Ptr_Rolo_Entry entry;
+void display_entry_for_update (entry) Ptr_Rolo_Entry entry;
 
 /* same as display_entry, except each item is numbered and the Date Updated */
 /* item is not displayed */
@@ -348,7 +352,7 @@ display_entry_for_update (entry) Ptr_Rolo_Entry entry;
 }
 
 
-int cathelpfile (filepath,helptopic,clear)
+void cathelpfile (filepath,helptopic,clear)
 
   char *filepath, *helptopic;
   int clear;
@@ -374,7 +378,7 @@ int cathelpfile (filepath,helptopic,clear)
 }
 
 
-any_char_to_continue ()
+void any_char_to_continue ()
 {
   char buffer[80];
   printf("RETURN to continue: ");

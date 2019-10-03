@@ -1,9 +1,12 @@
 #include <sys/file.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include <sgtty.h>
 #include <sys/time.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "sys5.h"
 
@@ -21,9 +24,14 @@
 #include "datadef.h"
 #include "choices.h"
 
+extern void rolo_add ();
+extern int select_field_to_search_by();
+extern void rolo_search_mode();
 
 
-print_short ()
+
+
+void print_short ()
 
 /* print the names and phone numbers of everyone in the rolodex. */
 
@@ -62,7 +70,7 @@ print_short ()
  }
 
 
-person_match (person,entry) char *person; Ptr_Rolo_Entry entry;
+int person_match (person,entry) char *person; Ptr_Rolo_Entry entry;
 
 /* Match against a rolodex entry's Name and Company fields. */
 /* Thus if I say 'rolo CCA' I will find people who work at CCA. */
@@ -98,7 +106,7 @@ int find_all_person_matches (person) char *person;
 }
 
 
-look_for_person (person) char *person;
+void look_for_person (person) char *person;
 
 /* search against Name and Company over the rolodex.  If a match is found */
 /* display the entry and give the user a choice of what to do next. */
@@ -106,7 +114,7 @@ look_for_person (person) char *person;
 {
   Ptr_Rolo_List rptr;
   int found = 0,result,nmatches;
-  static displayed_menu = 0;
+  static int displayed_menu = 0;
   char *response;
 
   rptr = Begin_Rlist;
@@ -169,7 +177,7 @@ look_for_person (person) char *person;
 }
 
 
-print_people ()
+void print_people ()
 
 {
   int index;
@@ -182,7 +190,7 @@ print_people ()
 }
 
 
-interactive_rolo ()
+void interactive_rolo ()
 
 /* Top level of the iteractive rolodex.  This code is just a big switch */
 /* which passes responsibility off to various routines in 'operations.c' */

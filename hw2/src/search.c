@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <ctype.h>
 
 #include "sys5.h"
@@ -17,21 +20,28 @@
 #include "datadef.h"
 #include "choices.h"
 
+extern int rolo_menu_data_help_or_abort();
+extern void display_field_names();
+extern int rolo_menu_number_help_or_abort();
+extern int entry_action();
+extern void display_list_of_entries();
+extern void summarize_entry_list();
+
 
 char *select_search_string ()
 
 /* returns 0 if user wants to quit, otherwise returns a user-provided string */
 
 {
-  int rval;        
+  int rval;
   char *response;
-  rval = rolo_menu_data_help_or_abort (        
+  rval = rolo_menu_data_help_or_abort (
               "Enter string to search for: ",
               "searchstringhelp",
               "string to search for",
               &response
           );
-  switch (rval) {          
+  switch (rval) {
     case MENU_ABORT :
       return(0);
       break;
@@ -39,10 +49,11 @@ char *select_search_string ()
       return(copystr(response));
       break;
   }
-}  
-  
+  return EXIT_SUCCESS;
+}
 
-select_field_to_search_by (ptr_index,ptr_name) int *ptr_index; char **ptr_name;
+
+int select_field_to_search_by (ptr_index,ptr_name) int *ptr_index; char **ptr_name;
 
 /* returns -1 if the user wishes to abort, otherwise returns 0. */
 /* if the user wishes to search by a user-defined field, *ptr_index is OTHER */
@@ -52,48 +63,48 @@ select_field_to_search_by (ptr_index,ptr_name) int *ptr_index; char **ptr_name;
   char *response;
   int nchoices = N_BASIC_FIELDS;
   int field_index,rval;
-  
+
   redo :
-  
+
   /* list out each basic field that the user can search by.   The user is */
   /* also given an option to search by a user-provided field.   At the */
   /* moment you cannot search by 'Date Updated' */
-  
-  display_field_names();  
-  
-  reask :
-  
+
+  display_field_names();
+
+  /*reask :*/
+
   rval = rolo_menu_number_help_or_abort (
        "Number of item to search by? ",
        1,nchoices,&field_index
     );
-    
+
   switch (rval) {
-        
+
     case MENU_ABORT :
       return(-1);
       break;
-      
+
     case MENU_HELP :
       cathelpfile(libdir("fieldsearchhelp"),"entering search field",1);
       any_char_to_continue();
       goto redo;
       break;
-      
+
     case MENU_DATA :
-    
+
       if (field_index != nchoices) {
          *ptr_index = field_index - 1;
          *ptr_name = copystr(Field_Names[*ptr_index]);
          return(0);
       }
-      
+
       /* the user wants to search by a user-specified field */
-      
+
       else {
-        
-         reask2 :
-        
+
+         /*reask2 :*/
+
          rval = rolo_menu_data_help_or_abort (
                     "Name of user-defined field? ",
                     "userfieldhelp",
@@ -106,27 +117,27 @@ select_field_to_search_by (ptr_index,ptr_name) int *ptr_index; char **ptr_name;
              break;
            case MENU_DATA :
              *ptr_index = OTHER;
-             *ptr_name = copystr(response);           
-             return(0);         
+             *ptr_name = copystr(response);
+             return(0);
              break;
          }
       }
       break;
   }
-  
-}  
-      
+  return EXIT_SUCCESS;
+}
 
-match_by_name_or_company (search_string,sslen) char *search_string; int sslen;
+
+int match_by_name_or_company (search_string,sslen) char *search_string; int sslen;
 
 {
   char *name,*company;
-  Ptr_Rolo_Entry entry;        
+  Ptr_Rolo_Entry entry;
   Ptr_Rolo_List rlist;
   int count = 0;
-  
+
   rlist = Begin_Rlist;
-  while (rlist != 0) {  
+  while (rlist != 0) {
     entry = get_entry(rlist);
     name = get_basic_rolo_field((int) R_NAME,entry);
     company = get_basic_rolo_field((int) R_COMPANY,entry);
@@ -137,11 +148,11 @@ match_by_name_or_company (search_string,sslen) char *search_string; int sslen;
     }
   }
   return(count);
-  
+
 }
 
 
-match_link (rlink,field_index,field_name,fnlen,search_string,sslen)
+int match_link (rlink,field_index,field_name,fnlen,search_string,sslen)
 
   /* if a match is present, sets the 'matched' field in the link, and */
   /* returns 1, otherwise returns 0. */
@@ -152,19 +163,19 @@ match_link (rlink,field_index,field_name,fnlen,search_string,sslen)
   int fnlen;
   char *search_string;
   int sslen;
-  
+
 {
-  Ptr_Rolo_Entry entry;        
+  Ptr_Rolo_Entry entry;
   char *field;
   char name[100];
   int j;
-        
+
   entry = get_entry(rlink);
-  
+
   if (field_index == OTHER) {
      for (j = 0; j < get_n_others(entry); j++) {
          field = get_other_field(j,entry);
-         while (*field != ':') *field++;
+         while (*field != ':') field++;
          *field = '\0';
          remove_excess_blanks(name,get_other_field(j,entry));
          *field++ = ':';
@@ -190,7 +201,7 @@ match_link (rlink,field_index,field_name,fnlen,search_string,sslen)
 }
 
 
-find_all_matches (field_index,field_name,search_string,ptr_first_match) 
+int find_all_matches (field_index,field_name,search_string,ptr_first_match)
 
   /* mark every entry in the rolodex which matches against the search_string */
   /* If the search_string is a substring of the data in the given field then */
@@ -201,30 +212,30 @@ find_all_matches (field_index,field_name,search_string,ptr_first_match)
   char *field_name, *search_string;
   Ptr_Rolo_List *ptr_first_match;
 
-{  
-  char buffer[100];    
+{
+  char buffer[100];
   int fnlen,sslen;
   int count = 0;
   Ptr_Rolo_List rlist = Begin_Rlist;
-  
+
   remove_excess_blanks(buffer,field_name);
   fnlen = strlen(buffer);
   sslen = strlen(search_string);
-  
-  while (rlist != 0) {  
+
+  while (rlist != 0) {
     unset_matched(rlist);
     if (match_link(rlist,field_index,buffer,fnlen,search_string,sslen)) {
        if (count++ == 0) *ptr_first_match = rlist;
     }
     rlist = get_next_link(rlist);
-  }    
-  
+  }
+
   return(count);
-  
+
 }
 
 
-rolo_search_mode (field_index,field_name,search_string)
+void rolo_search_mode (field_index,field_name,search_string)
 
   int field_index;
   char *field_name;
@@ -237,7 +248,7 @@ rolo_search_mode (field_index,field_name,search_string)
 
   /* mark every entry in the rolodex that satisfies the search criteria */
   /* and return the number of items so marked. */
-  
+
   in_search_mode = 1;
   n = find_all_matches(field_index,field_name,search_string,&first_match);
 
@@ -252,7 +263,7 @@ rolo_search_mode (field_index,field_name,search_string)
   }
 
   /* if the match is unique, just display the entry. */
-  
+
   else if (n == 1) {
      display_entry(get_entry(first_match));
      switch (entry_action(first_match)) {
@@ -270,7 +281,7 @@ rolo_search_mode (field_index,field_name,search_string)
   /* screen, tell the user that there are lots of matches and suggest */
   /* he specify a better search string, but give him the option of */
   /* iterating through every match. */
-  
+
   else if (n > MAXMATCHES) {
      clear_the_screen();
      printf("There are %d entries that match '%s' !\n",n,search_string);
@@ -279,7 +290,7 @@ rolo_search_mode (field_index,field_name,search_string)
      rval = rolo_menu_data_help_or_abort (
                  "","manymatchhelp","many matching entries",&response
               );
-     if (rval == MENU_ABORT) goto rtn;              
+     if (rval == MENU_ABORT) goto rtn;
      display_list_of_entries(Begin_Rlist);
      goto rtn;
   }
@@ -287,11 +298,11 @@ rolo_search_mode (field_index,field_name,search_string)
   /* there are a small number of matching entries.  List the name of each */
   /* matching entry and let the user select which one he wants to view, */
   /* or whether he wants to iterate through each matching entry. */
-  
+
   else {
      relist :
      summarize_entry_list(Begin_Rlist,search_string);
-     cathelpfile(libdir("pickentrymenu"),0,0);  
+     cathelpfile(libdir("pickentrymenu"),0,0);
      rval = menu_match (
           &menuval,&response,
           ": ",
@@ -301,7 +312,7 @@ rolo_search_mode (field_index,field_name,search_string)
           "Help",S_HELP,
           "",S_SCAN_ONE_BY_ONE
        );
-     switch (rval) {    
+     switch (rval) {
        case MENU_MATCH :
          switch (menuval) {
            case S_HELP :
@@ -318,12 +329,12 @@ rolo_search_mode (field_index,field_name,search_string)
              break;
          }
          break;
-         
+
        /* make sure the user entered a valid integer, ival */
        /* if so, find the ivalth entry marked as matched in the rolodex */
        /* and display it. */
-         
-       case MENU_NO_MATCH : 
+
+       case MENU_NO_MATCH :
          ival = str_to_pos_int(response,0,n);
          if (ival < 0) {
             printf("Not a valid number... Please try again\n");
@@ -336,7 +347,7 @@ rolo_search_mode (field_index,field_name,search_string)
                if (get_matched(rmatch = rlist)) break;
                rlist = get_next_link(rlist);
              }
-             if (rlist != 0) rlist = get_next_link(rlist);                
+             if (rlist != 0) rlist = get_next_link(rlist);
          }
          display_entry(get_entry(rmatch));
          switch (entry_action(rmatch)) {
@@ -354,5 +365,5 @@ rolo_search_mode (field_index,field_name,search_string)
 
   rtn :
   in_search_mode = 0;
-  
+
 }

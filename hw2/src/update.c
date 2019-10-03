@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "sys5.h"
 
@@ -16,6 +18,8 @@
 #include "rolodefs.h"
 #include "datadef.h"
 #include "choices.h"
+
+extern void display_entry_for_update();
 
 
 char *get_new_value ()
@@ -70,7 +74,7 @@ Ptr_Rolo_Entry copy_entry (entry) Ptr_Rolo_Entry entry;
 }
 
 
-rolo_update_mode (rlink) Ptr_Rolo_List rlink;
+void rolo_update_mode (rlink) Ptr_Rolo_List rlink;
 
 /* Update the fields of an entry.  The user is not allowed to modify the */
 /* timestamp field. */

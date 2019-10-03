@@ -6,7 +6,7 @@
 
 #include "rolodefs.h"
 int putchar();
-static int ok_to_clear;
+/*static int ok_to_clear;*/
 
 #ifdef TERMCAP
 static char clear_screen[128] = 0;
