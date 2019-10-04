@@ -75,5 +75,6 @@ extern char *timestring();
 extern char *homedir(), *libdir();
 extern char *getenv();
 extern char *ctime();
+/*extern time_t time();*/
 extern char *select_search_string();
 extern int in_search_mode;

@@ -69,7 +69,7 @@ Ptr_Rolo_Entry copy_entry (entry) Ptr_Rolo_Entry entry;
          set_other_field(j,new_entry,copystr(get_other_field(j,entry)));
      }
   }
-  new_entry -> other_fields = 0;
+  //new_entry -> other_fields = 0;//should I delete this line?
 
   return(new_entry);
 

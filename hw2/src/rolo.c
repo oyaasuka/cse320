@@ -7,6 +7,7 @@
 #include <sgtty.h>
 #include <signal.h>
 #include <pwd.h>
+#include <time.h>
 
 #include "sys5.h"
 
@@ -47,7 +48,7 @@ char *rolo_emalloc (size) int size;
 
 {
   char *rval;
-  if (0 == (rval = malloc(size))) {
+  if (0 == (rval = malloc((unsigned)size))) {
      fprintf(stderr,"Fatal error:  out of memory\n");
      save_and_exit(-1);
   }
@@ -63,7 +64,7 @@ char *copystr (s) char *s;
 {
  char *copy;
  if (s == 0) return(0);
- copy = rolo_emalloc(strlen(s));
+ copy = rolo_emalloc(strlen(s)+1);
  strcpy(copy,s);
  return(copy);
 }
@@ -76,7 +77,7 @@ char *timestring ()
 {
   char *s;
   long timeval;
-  ctime(&timeval);
+  time(&timeval);//?
   s = ctime(&timeval);/*??????*/
   s[strlen(s) - 1] = '\0';
   return(copystr(s));

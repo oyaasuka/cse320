@@ -16,6 +16,7 @@ Ptr_Rolo_List new_link_with_entry ()
   newlink = (Ptr_Rolo_List) rolo_emalloc(sizeof(Rolo_List));
   unset_matched(newlink);
   newentry = (Ptr_Rolo_Entry) rolo_emalloc(sizeof(Rolo_Entry));
+  set_n_others(newentry,0);//?
   newentry -> other_fields = 0;
   set_entry(newlink,newentry);
   return(newlink);
