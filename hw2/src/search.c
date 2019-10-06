@@ -336,7 +336,7 @@ void rolo_search_mode (field_index,field_name,search_string)
 
        case MENU_NO_MATCH :
          ival = str_to_pos_int(response,0,n);
-         if (ival < 0) {
+         if (ival <= 0) {
             printf("Not a valid number... Please try again\n");
             sleep(2);
             goto relist;

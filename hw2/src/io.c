@@ -300,6 +300,7 @@ void display_entry (entry) Ptr_Rolo_Entry entry;
 
   for (j = 0; j < N_BASIC_FIELDS - 1; j++) {
       string = get_basic_rolo_field(j,entry);
+      if(string !=NULL)
       display_basic_field(Field_Names[j],string,0,0);
   }
 
@@ -308,6 +309,7 @@ void display_entry (entry) Ptr_Rolo_Entry entry;
   n_others = get_n_others(entry);
   for (j = 0; j < n_others; j++) {
       string = get_other_field(j,entry);
+      if(string !=NULL)
       display_other_field(string);
    }
 

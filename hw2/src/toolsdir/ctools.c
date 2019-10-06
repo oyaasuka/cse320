@@ -509,7 +509,7 @@ Bool all_whitespace (astring) char *astring;
 /* test whether every character is a blank or a tab */
 
 {
-  register char ch;
+  register char ch;//!!!
   while ((ch = *astring++) != '\0') {
     if (ch == ' ' || ch == '\t') continue;
     return(F);
