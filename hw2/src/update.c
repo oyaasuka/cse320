@@ -69,7 +69,7 @@ Ptr_Rolo_Entry copy_entry (entry) Ptr_Rolo_Entry entry;
          set_other_field(j,new_entry,copystr(get_other_field(j,entry)));
      }
   }
-  //new_entry -> other_fields = 0;//should I delete this line?
+  //new_entry -> other_fields = 0;//should I delete this line
 
   return(new_entry);
 
@@ -89,7 +89,6 @@ void rolo_update_mode (rlink) Ptr_Rolo_List rlink;
   cancel_update :
 
   entry = copy_entry(old_entry = get_entry(rlink));
-
   updated = 0;
   name_changed = 0;
 

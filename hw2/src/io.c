@@ -179,10 +179,18 @@ void write_rolo_list (fp) FILE *fp;
   while (rptr != 0) {
     entry = get_entry(rptr);
     for (j = 0; j < N_BASIC_FIELDS; j++) {
-        fprintf(fp,"%s\n",get_basic_rolo_field(j,entry));
+        char* tmp=get_basic_rolo_field(j,entry);
+        if(tmp!= NULL)
+        fprintf(fp,"%s\n",tmp);
+        else
+        fprintf(fp,"\n");
     }
     for (j = 0; j < get_n_others(entry); j++) {
-        fprintf(fp,"%s\n",get_other_field(j,entry));
+        char* tmp =get_other_field(j,entry);
+        if(tmp!= NULL)
+        fprintf(fp,"%s\n",tmp);
+        else
+        fprintf(fp,"%s\n","");
     }
     fprintf(fp,"\n");
     rptr = get_next_link(rptr);
