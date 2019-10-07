@@ -175,7 +175,6 @@ void write_rolo_list (fp) FILE *fp;
   int j;
 
   rptr = Begin_Rlist;
-
   while (rptr != 0) {
     entry = get_entry(rptr);
     for (j = 0; j < N_BASIC_FIELDS; j++) {

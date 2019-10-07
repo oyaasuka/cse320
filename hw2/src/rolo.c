@@ -64,7 +64,7 @@ char *copystr (s) char *s;
 {
  char *copy;
  if (s == 0) return(0);
- copy = rolo_emalloc(strlen(s));
+ copy = rolo_emalloc(strlen(s)+1);
  strcpy(copy,s);
  return(copy);
 }
