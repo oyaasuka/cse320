@@ -409,5 +409,4 @@ int if_heap_full(){
     }
     }
 
-    return 1;
-}
+    return 1;}
