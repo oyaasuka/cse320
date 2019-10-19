@@ -1,0 +1,103 @@
+==20285== Memcheck, a memory error detector
+==20285== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==20285== Using Valgrind-3.13.0 and LibVEX; rerun with -h for copyright info
+==20285== Command: bin/rolo
+==20285== 
+Reading in rolodex from /home/student/.rolodex.dat
+5 entries listed
+
+
+TMC ROLODEX, Version 2.0
+
+
+        TOP LEVEL MENU
+
+  +  :  add a new entry
+  %  :  scan the rolodex entry by entry
+  $  :  search by some item other than 'Name'
+  *  :  save any changes made so far
+  !  :  pretty print the rolodex database to a disk file
+  \  :  exit (any changes you've made will be saved)
+
+To search for an entry by name, just type in the name.
+To update or delete an entry, first find it by searching.
+
+Select option (? for help): Name:                    Debbie B. Smith
+Home Phone:              910-953-5740
+Company:                 Rose Records
+Home Address:            2524 Layman Avenue
+                         Fayetteville, NC 28306
+email:                   DebbieBSmith@armyspy.com
+birthday:                November 13, 1992
+Date Updated:            Sat Aug 31 19:05:48 2019
+
+
+   RETURN  : continue the scan.             %   : scan rolodex from this point.
+   +       : update or add to the entry.    <   : display previous entry.
+   -       : delete the entire entry.       \   : abort the scan.
+
+
+Action (? for help) : 1. Name:                    Debbie B. Smith
+2. Work Phone:              
+3. Home Phone:              910-953-5740
+4. Company:                 Rose Records
+5. Work Address:            
+6. Home Address:            2524 Layman Avenue
+                            Fayetteville, NC 28306
+7. Remarks:                 
+8. email:                   DebbieBSmith@armyspy.com
+9. birthday:                November 13, 1992
+10. Add a new user defined field
+
+Type number of the item you wish to change,
+or type RETURN to finalize your changes,
+or type '\' to cancel all your changes.
+
+: Displaying next entry in scan list...
+Name:                    Derick C. Peck
+Home Phone:              804-745-6397
+Home Address:            3923 Fleming Way
+                         Richmond, VA 23224
+email:                   DerickCPeck@armyspy.com
+Date Updated:            Sat Aug 31 19:11:23 2019
+
+Action (? for help) :         TOP LEVEL MENU
+
+  +  :  add a new entry
+  %  :  scan the rolodex entry by entry
+  $  :  search by some item other than 'Name'
+  *  :  save any changes made so far
+  !  :  pretty print the rolodex database to a disk file
+  \  :  exit (any changes you've made will be saved)
+
+To search for an entry by name, just type in the name.
+To update or delete an entry, first find it by searching.
+
+Select option (? for help): ==20285== 
+==20285== HEAP SUMMARY:
+==20285==     in use at exit: 101,912 bytes in 30 blocks
+==20285==   total heap usage: 50 allocs, 20 frees, 136,274 bytes allocated
+==20285== 
+==20285== 269 (80 direct, 189 indirect) bytes in 1 blocks are definitely lost in loss record 8 of 11
+==20285==    at 0x4C2FB0F: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==20285==    by 0x109411: rolo_emalloc (rolo.c:51)
+==20285==    by 0x10E5AD: copy_entry (update.c:51)
+==20285==    by 0x10E6E4: rolo_update_mode (update.c:91)
+==20285==    by 0x10A94D: entry_action (operations.c:287)
+==20285==    by 0x10AA86: display_list_of_entries (operations.c:329)
+==20285==    by 0x10ABB5: rolo_peruse_mode (operations.c:381)
+==20285==    by 0x10E3B9: interactive_rolo (options.c:254)
+==20285==    by 0x109F9D: rolo_main (rolo.c:373)
+==20285==    by 0x10DCC0: main (main.c:20)
+==20285== 
+==20285== LEAK SUMMARY:
+==20285==    definitely lost: 80 bytes in 1 blocks
+==20285==    indirectly lost: 189 bytes in 11 blocks
+==20285==      possibly lost: 0 bytes in 0 blocks
+==20285==    still reachable: 101,643 bytes in 18 blocks
+==20285==         suppressed: 0 bytes in 0 blocks
+==20285== Reachable blocks (those to which a pointer was found) are not shown.
+==20285== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==20285== 
+==20285== For counts of detected and suppressed errors, rerun with: -v
+==20285== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
