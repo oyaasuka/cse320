@@ -65,9 +65,9 @@ Test(sf_memsuite_student, malloc_over_four_pages, .init = sf_mem_init, .fini = s
 
 Test(sf_memsuite_student, free_quick, .init = sf_mem_init, .fini = sf_mem_fini) {
 	sf_errno = 0;
-	/* void *x = */ sf_malloc(8);
+	sf_malloc(8);
 	void *y = sf_malloc(32);
-	/* void *z = */ sf_malloc(1);
+	sf_malloc(1);
 
 	sf_free(y);
 
@@ -78,9 +78,9 @@ Test(sf_memsuite_student, free_quick, .init = sf_mem_init, .fini = sf_mem_fini) 
 
 Test(sf_memsuite_student, free_no_coalesce, .init = sf_mem_init, .fini = sf_mem_fini) {
 	sf_errno = 0;
-	/* void *x = */ sf_malloc(8);
+	sf_malloc(8);
 	void *y = sf_malloc(200);
-	/* void *z = */ sf_malloc(1);
+	sf_malloc(1);
 
 	sf_free(y);
 
@@ -92,10 +92,10 @@ Test(sf_memsuite_student, free_no_coalesce, .init = sf_mem_init, .fini = sf_mem_
 
 Test(sf_memsuite_student, free_coalesce, .init = sf_mem_init, .fini = sf_mem_fini) {
 	sf_errno = 0;
-	/* void *w = */ sf_malloc(8);
+	sf_malloc(8);
 	void *x = sf_malloc(200);
 	void *y = sf_malloc(300);
-	/* void *z = */ sf_malloc(4);
+	sf_malloc(4);
 
 	sf_free(y);
 	sf_free(x);
@@ -108,11 +108,11 @@ Test(sf_memsuite_student, free_coalesce, .init = sf_mem_init, .fini = sf_mem_fin
 
 Test(sf_memsuite_student, freelist, .init = sf_mem_init, .fini = sf_mem_fini) {
 	void *u = sf_malloc(200);
-	/* void *v = */ sf_malloc(300);
+	sf_malloc(300);
 	void *w = sf_malloc(200);
-	/* void *x = */ sf_malloc(500);
+	sf_malloc(500);
 	void *y = sf_malloc(200);
-	/* void *z = */ sf_malloc(700);
+	sf_malloc(700);
 
 	sf_free(u);
 	sf_free(w);
@@ -132,7 +132,7 @@ Test(sf_memsuite_student, freelist, .init = sf_mem_init, .fini = sf_mem_fini) {
 
 Test(sf_memsuite_student, realloc_larger_block, .init = sf_mem_init, .fini = sf_mem_fini) {
 	void *x = sf_malloc(sizeof(int));
-	/* void *y = */ sf_malloc(10);
+	sf_malloc(10);
 	x = sf_realloc(x, sizeof(int) * 10);
 
 	cr_assert_not_null(x, "x is NULL!");
@@ -181,3 +181,83 @@ Test(sf_memsuite_student, realloc_smaller_block_free_block, .init = sf_mem_init,
 //DO NOT DELETE THESE COMMENTS
 //############################################
 
+Test(test1, the_current_heap_full, .init = sf_mem_init, .fini = sf_mem_fini) {
+	sf_errno = 0;
+	int *x = sf_malloc(4032);
+
+	cr_assert_not_null(x, "x is NULL!");
+
+	*x = 4;
+
+	cr_assert(*x == 4, "sf_malloc failed to give proper space for an int!");
+
+	assert_free_block_count(0, 0);
+
+	cr_assert(sf_errno == 0, "sf_errno is not zero!");
+	cr_assert(sf_mem_start() + PAGE_SZ == sf_mem_end(), "Allocated more than necessary!");
+	cr_assert(((*((size_t*)(((char*)sf_mem_end())-8)))&(PREV_BLOCK_ALLOCATED)) == 1, "Epilogue Block previous allocation doesn't match");
+}
+
+Test(test2, free_coalesce2, .init = sf_mem_init, .fini = sf_mem_fini) {
+	sf_errno = 0;
+	void *x = sf_malloc(8);
+    void *y = sf_malloc(200);
+    void *z = sf_malloc(300);
+    sf_malloc(4);
+
+    sf_free(x);
+    sf_free(z);
+    sf_free(y);
+
+	assert_free_block_count(0, 2);
+	assert_free_block_count(576, 1);
+	assert_free_block_count(3440, 1);
+	cr_assert(sf_errno == 0, "sf_errno is not zero!");
+}
+
+Test(test3, the_current_heap_full_then_free, .init = sf_mem_init, .fini = sf_mem_fini) {
+	sf_errno = 0;
+	int *x = sf_malloc(4032);
+
+	cr_assert_not_null(x, "x is NULL!");
+
+	*x = 4;
+
+	cr_assert(*x == 4, "sf_malloc failed to give proper space for an int!");
+
+	assert_free_block_count(0, 0);
+
+	cr_assert(sf_errno == 0, "sf_errno is not zero!");
+	cr_assert(sf_mem_start() + PAGE_SZ == sf_mem_end(), "Allocated more than necessary!");
+	cr_assert(((*((size_t*)(((char*)sf_mem_end())-8)))&(PREV_BLOCK_ALLOCATED)) == 1, "Epilogue Block previous allocation doesn't match");
+
+	sf_free(x);
+	assert_free_block_count(0, 1);
+	assert_free_block_count(4048, 1);
+	cr_assert(sf_errno == 0, "sf_errno is not zero!");
+	cr_assert(((*((size_t*)(((char*)sf_mem_end())-8)))&(PREV_BLOCK_ALLOCATED)) == 0, "Epilogue Block previous allocation doesn't match");
+}
+
+Test(test4, realloc_over_memory, .init = sf_mem_init, .fini = sf_mem_fini) {
+	sf_errno = 0;
+	void *x = sf_malloc(4);
+	sf_realloc(x,PAGE_SZ<<2);
+	//cr_assert_null(x, "x is not NULL!");
+	assert_free_block_count(0, 1);
+	//assert_free_block_count(16336, 1);
+	cr_assert(sf_errno == ENOMEM, "sf_errno is not ENOMEM!");
+}
+
+Test(test5, validate_argument1, .init = sf_mem_init, .fini = sf_mem_fini, .signal = SIGABRT) {
+	void* x= sf_malloc(sizeof(int));
+	x = (void*)((char*)x-8);
+	sf_free(x);
+
+}
+
+Test(test6, validate_argument2, .init = sf_mem_init, .fini = sf_mem_fini, .signal = SIGABRT) {
+	void* x= sf_malloc(4016);
+	x = (void*)((char*)x+88);
+	sf_free(x);
+
+}

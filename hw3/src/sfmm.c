@@ -55,17 +55,17 @@ void *sf_malloc(size_t size) {
     /*first call sf_malloc, then initialize the heap*/
     if(sf_mem_start()==sf_mem_end()){
 
-        sf_prologue* prologue_blkp = (sf_prologue*) (sf_mem_grow());
-        put(&(prologue_blkp->header), pack(32,1,1));
-        put(&(prologue_blkp->footer), pack(32,1,1)^sf_magic());
+        void* prologue_blkp = sf_mem_grow();
+        put(get_hdp(prologue_blkp), pack(32,1,1));
+        put(get_ftp(prologue_blkp), pack(32,1,1)^sf_magic());
 
 
-        sf_epilogue* epilogue_blkp = (sf_epilogue*)((char*)sf_mem_end()-8);
-        put(&(epilogue_blkp->header), pack(0,1,0));
+        void* epilogue_blkp = (void*)((char*)sf_mem_end()-8);
+        put(epilogue_blkp, pack(0,1,0));
 
-        sf_block* remainder = (sf_block*)((char*)prologue_blkp+32);
-        put(&(remainder->header),pack(4048,0,1));
-        put((size_t*)((char*)epilogue_blkp-8),pack(4048,0,1)^sf_magic());
+        void* remainder = (void*)((char*)prologue_blkp+32);
+        put(get_hdp(remainder),pack(4048,0,1));
+        put(get_ftp(remainder),pack(4048,0,1)^sf_magic());
 
 
 
@@ -78,10 +78,9 @@ void *sf_malloc(size_t size) {
 
         sf_free_list_heads[7].body.links.next = remainder;
         sf_free_list_heads[7].body.links.prev = remainder;
-        (*remainder).body.links.next = &sf_free_list_heads[7];
-        (*remainder).body.links.prev = &sf_free_list_heads[7];
+        (*(sf_block*)remainder).body.links.next = &sf_free_list_heads[7];
+        (*(sf_block*)remainder).body.links.prev = &sf_free_list_heads[7];
     }
-
 
     /*if size equals 0, return NULL*/
     if(size==0) return NULL;
@@ -95,7 +94,6 @@ void *sf_malloc(size_t size) {
     i=find_freelist(asize);
 
     free_blkp = firstFit_blkp(asize,i);
-
     if(free_blkp==NULL)
         return NULL;
     if(asize+M <= get_size(free_blkp)){
@@ -111,15 +109,24 @@ void *sf_malloc(size_t size) {
 void sf_free(void *pp) {
     void* bp = (void*)((char*)pp-16);
     size_t size = get_size(bp);
+    void* next_blkp = get_next_blkp(bp);
+    void* prev_blkp = get_prev_blkp(bp);
 
     if(!validate_argument(pp))
         abort();
 
-
-    put(get_hdp(bp),pack(size,0,get_prev_alloc(bp)));
-    put((size_t*)((char*)bp+size),pack(size,0,get_prev_alloc(bp))^sf_magic());
+    put(get_hdp(bp),pack(size,0,get_alloc(prev_blkp)));
+    put(get_ftp(bp),pack(size,0,get_alloc(prev_blkp))^sf_magic());
+    if(next_blkp!=(void*)((char*)sf_mem_end()-16)){
+        put(get_hdp(next_blkp),pack(get_size(next_blkp),get_alloc(next_blkp),0));
+        put(get_ftp(next_blkp),pack(get_size(next_blkp),get_alloc(next_blkp),0)^sf_magic());
+    }
+    else{
+        put((void*)((char*)sf_mem_end()-8),pack(0,1,0));
+    }
 
     coalesce(bp);
+
 
 
 
@@ -141,12 +148,11 @@ void *sf_realloc(void *pp, size_t rsize) {
         return pp;
     else if(size<rsize){
         void* new_pp = sf_malloc(rsize);
-
         if(new_pp == NULL) return NULL;
-
         memcpy(new_pp,pp,rsize);
         sf_free(pp);
-        return new_pp;
+        pp = new_pp;
+        return pp;
 
     }
     else{
@@ -302,6 +308,15 @@ void* coalesce(void *bp){
         insert_free_blk(bp);
     }
 
+    void* next_blk = get_next_blkp(bp);
+    if(next_blk!=(void*)((char*)sf_mem_end()-16)){
+        put(get_hdp(next_blk),pack(get_size(next_blk),get_alloc(next_blk),0));
+        put(get_ftp(next_blk),pack(get_size(next_blk),get_alloc(next_blk),0)^sf_magic());
+    }
+    else{
+        put((void*)((char*)sf_mem_end()-8),pack(0,1,0));
+    }
+
     return bp;
 }
 
@@ -356,9 +371,17 @@ void* split(void *free_blkp, size_t asize){
     (*next_blk).body.links.prev = prev_blk;*/
 
     /*set upper field*/
-    upper_blkp = (sf_block*)((char*)lower_blkp+lower_size);
+    upper_blkp = (void*)((char*)lower_blkp+lower_size);
     put(get_hdp(upper_blkp), pack(upper_size,upper_alloc,upper_prev_alloc));
     put(get_ftp(upper_blkp), pack(upper_size,upper_alloc,upper_prev_alloc)^sf_magic());
+    void* next_blk = get_next_blkp(upper_blkp);
+    if(next_blk!=(void*)((char*)sf_mem_end()-16)){
+        put(get_hdp(next_blk),pack(get_size(next_blk),get_alloc(next_blk),upper_prev_alloc));
+        put(get_ftp(next_blk),pack(get_size(next_blk),get_alloc(next_blk),upper_prev_alloc)^sf_magic());
+    }
+    else{
+        put((void*)((char*)sf_mem_end()-8),pack(0,1,upper_alloc));
+    }
 
     if(get_alloc(free_blkp)==0){
     //(*upper_blkp).body.links.prev = NULL;
@@ -399,16 +422,16 @@ void insert_free_blk(void *free_blkp){
 void* place(void *alloc_blkp, size_t size){
     if(get_alloc(alloc_blkp)==0){
 
-        put(get_hdp(alloc_blkp), pack(size,1,get_prev_alloc(alloc_blkp)));
-        put(get_ftp(alloc_blkp), pack(size,1,get_prev_alloc(alloc_blkp))^sf_magic());
-        sf_block* prevp = (*(sf_block*)alloc_blkp).body.links.prev;
-        sf_block* nextp = (*(sf_block*)alloc_blkp).body.links.next;
-        (*(sf_block*)prevp).body.links.next = nextp;
-        (*(sf_block*)nextp).body.links.prev = prevp;
+        put(get_hdp(alloc_blkp), pack(size,1,get_prev_alloc(get_prev_blkp(alloc_blkp))));
+        put(get_ftp(alloc_blkp), pack(size,1,get_prev_alloc(get_prev_blkp(alloc_blkp)))^sf_magic());
+        sf_block* prevfbp = (*(sf_block*)alloc_blkp).body.links.prev;
+        sf_block* nextfbp = (*(sf_block*)alloc_blkp).body.links.next;
+        (*(sf_block*)prevfbp).body.links.next = nextfbp;
+        (*(sf_block*)nextfbp).body.links.prev = prevfbp;
     }
     else{
-        put(get_hdp(alloc_blkp), pack(size,1,get_prev_alloc(alloc_blkp)));
-        put(get_ftp(alloc_blkp), pack(size,1,get_prev_alloc(alloc_blkp))^sf_magic());
+        put(get_hdp(alloc_blkp), pack(size,1,get_prev_alloc(get_prev_blkp(alloc_blkp))));
+        put(get_ftp(alloc_blkp), pack(size,1,get_prev_alloc(get_prev_blkp(alloc_blkp)))^sf_magic());
 
     }
 
@@ -420,6 +443,12 @@ void* place(void *alloc_blkp, size_t size){
         put(epilogue_blkp, pack(0,1,1));
     }
 
+    void* next_blk = get_next_blkp(alloc_blkp);
+    if(next_blk!=(void*)((char*)sf_mem_end()-16)){
+        put(get_hdp(next_blk),pack(get_size(next_blk),get_alloc(next_blk),1));
+        put(get_ftp(next_blk),pack(get_size(next_blk),get_alloc(next_blk),1)^sf_magic());
+    }
+
 
     return (void*)(&((*((sf_block*)alloc_blkp)).body.payload));
 }
@@ -427,9 +456,9 @@ void* place(void *alloc_blkp, size_t size){
 void extend_empty_block(void* extended_pp){
     void* extended_blkp = (char*)extended_pp - 16;
     put(get_hdp(extended_blkp),pack(PSIZE,0,get_prev_alloc(extended_blkp)));
-    put((size_t*)((char*)extended_blkp+PSIZE),pack(PSIZE,0,get_prev_alloc(extended_blkp))^sf_magic());
-    sf_epilogue* epilogue_blkp = (sf_epilogue*)((char*)sf_mem_end()-8);
-    put(&(epilogue_blkp->header), pack(0,1,0));
+    put(get_ftp(extended_blkp),pack(PSIZE,0,get_prev_alloc(extended_blkp))^sf_magic());
+    void* epilogue_blkp = (void*)((char*)sf_mem_end()-8);
+    put(epilogue_blkp, pack(0,1,0));
     coalesce(extended_blkp);
 }
 
@@ -445,14 +474,15 @@ int if_heap_full(){
     return 1;}
 
 int validate_argument(void* pp){
+    if(pp==NULL){
+        return 0;
+    }
     void* bp = (void*)((char*)pp-16);
     void* prologue_blkp = sf_mem_start();
     void* epilogue_blkp = (void*)((char*)sf_mem_end()-8);
     void* prev_blkp = get_prev_blkp(bp);
     size_t size = get_size(bp);
 
-    if(pp==NULL)
-        return 0;
 
     if(get_alloc(bp)==0)
         return 0;
