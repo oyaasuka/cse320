@@ -14,87 +14,64 @@
  */
 
 #define ENABLED 1
-#define UNENABLED 0
+#define DISABLED 0
 
 
 int main(int argc, char *argv[])
 {
     // TO BE IMPLEMENTED
     //
-    jobs_init();
-    char* buf = sf_readline("jobber> ");
-    char* opt = get_opt(buf);
+    if(jobs_init() == -1) exit(EXIT_FAILURE);
+
+    char* buf;
+    char *opt;
+    while(1) {
+        buf = sf_readline("jobber> ");
+        opt = get_opt(buf);
+
+        if(strcmp(opt, "spool")==0)
+            job_create(get_task(buf));
+
+        if(strcmp(opt, "enable")==0)
+            jobs_set_enabled(ENABLED);
+
+        if(strcmp(opt, "disable")==0)
+            jobs_set_enabled(DISABLED);
+
+        if(strcmp(opt, "quit") ==0)
+            exit(0);
+
+        if(strcmp(opt, "help") ==0){
+            printf("Available commands:\n");
+            printf("help (0 args) Print this help message\n");
+            printf("quit (0 args) Quit the program\n");
+            printf("enable (0 args) Allow jobs to start\n");
+            printf("disable (0 args) Prevent jobs from starting\n");
+            printf("spool (1 args) Spool a new job\n");
+            printf("pause (1 args) Pause a running job\n");
+            printf("resume (1 args) Resume a paused job\n");
+            printf("cancel (1 args) Cancel an unfinished job\n");
+            printf("expunge (1 args) Expunge a finished job\n");
+            printf("status (1 args) Print the status of a job\n");
+            printf("jobs (0 args) Print the status of all jobs\n");
+        }
+
+        if(strcmp(opt, "status") ==0){
+            job_get_status(get_id(buf));
+        }
+
+        if(strcmp(opt, "expunge") ==0){
+            job_expunge(get_id(buf));
+        }
 
 
-    if(strcmp(opt, "spool")==0){
-        job_create(get_task(buf));
     }
 
-    buf = sf_readline("jobber> ");
-    opt = get_opt(buf);
-    if(strcmp(opt, "spool")==0){
-        job_create(get_task(buf));
-    }
 
-    buf = sf_readline("jobber> ");
-    opt = get_opt(buf);
-    if(strcmp(opt, "enable")==0){
-        jobs_set_enabled(ENABLED);
-    }
-
-    sf_readline("jobber> ");
+    jobs_fini();
 
 
-    /*int n = strlen("echo start ; cat /etc/passwd | grep bash > out ; echo done");
-    char *tp = "echo start ; cat /etc/passwd | grep bash > out ; echo done";
-    char taskcpy[n];
-
-    for(int i = 0; i<n; i++){
-        taskcpy[i] = *(tp+i);
-    }
-    taskcpy[n] = '\0';
-    tp = taskcpy;
-
-    n = strlen("echo start");
-    char *tp1 = "echo start";
-    char taskcpy1[n];
-
-    for(int i = 0; i<n; i++){
-        taskcpy1[i] = *(tp1+i);
-    }
-    taskcpy1[n] = '\0';
-    tp1 = taskcpy1;
-
-
-
-    char **array;
-    int row;
-    row =2;
-    array=(char **)malloc(row*sizeof(char *));
-
-        array[0]=tp;
-        array[1]=tp1;*/
-
-
-
-
-
-
-    //char *b = *a;
-    //*b = '\0';
-    //printf("%c\n");
-    /*TASK *test_tasks = parse_task(array);
-    PIPELINE_LIST *test_pipelines = test_tasks->pipelines;
-    PIPELINE * test_pipeline = test_pipelines->first;
-    COMMAND_LIST * test_commands = test_pipeline->commands;
-    COMMAND * test_command = test_commands ->first;
-    WORD_LIST* test_words = test_command->words;
-    char* test_word = test_words ->first;
-
-    printf("%s\n",test_word);*/
-
-
-    exit(EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
 }
 
 /*

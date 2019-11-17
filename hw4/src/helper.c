@@ -31,6 +31,16 @@ char* get_task(char* buf){
     return task;
 }
 
+int get_id(char* buf){
+
+    while(1){
+        if(*(buf++)=='\0'){
+            return (*(buf))-'0';
+        }
+    }
+    return -1;
+}
+
 int handler_function(){
     if(child_signal_arrived==1)
         child_handler_function();
