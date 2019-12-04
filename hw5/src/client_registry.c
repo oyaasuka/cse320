@@ -10,7 +10,7 @@ typedef struct client_registry{
     sem_t empty;//a flag to indicate emptyness
 } CLIENT_REGISTRY;
 
-CLIENT_REGISTRY *creg_init(){
+CLIENT_REGISTRY *creg_init(){//?
     int n = FD_SETSIZE-4;
     CLIENT_REGISTRY * cr = Malloc(sizeof(CLIENT_REGISTRY));
     cr->buf = Malloc(n*sizeof(int));
@@ -32,12 +32,12 @@ int creg_register(CLIENT_REGISTRY *cr, int fd){
     int i =0;
 
     while(i<cr->length){
-
         if(cr->buf[i]==0){
             if(cr->size==0) P(&cr->empty);
             cr->buf[i] = fd;
             cr->size = cr->size+1;
             V(&cr->mutex);
+            debug("Register client fd %d",fd);
             return 0;
         }
         i++;
