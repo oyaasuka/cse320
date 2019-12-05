@@ -37,7 +37,7 @@ int creg_register(CLIENT_REGISTRY *cr, int fd){
             cr->buf[i] = fd;
             cr->size = cr->size+1;
             V(&cr->mutex);
-            debug("Register client fd %d",fd);
+            debug("Register client fd %d (total connected:%d)",fd,cr->size);
             return 0;
         }
         i++;
