@@ -33,7 +33,7 @@ int proto_recv_packet(int fd, BRS_PACKET_HEADER *hdr, void **payloadp){
             return -1;
         }
     }
-    //debug("%s\n",payloadp[0]);
+    //debug("here");
     return 0;
 }
 

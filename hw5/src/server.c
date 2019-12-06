@@ -7,21 +7,21 @@
 void convertToHostBytes(BRS_PACKET_HEADER *hdr);
 void convertToNetBytes(BRS_PACKET_HEADER *hdr);
 BRS_PACKET_HEADER * create_sed_hdr(BRS_PACKET_TYPE t,uint16_t s);
-char* brs_login(TRADER* user, int connfd, BRS_PACKET_HEADER *rev_hdr,void **rev_payloadp);
-BRS_ORDER_INFO* brs_buy(TRADER* user, int connfd, BRS_PACKET_HEADER *rev_hdr,void **rev_payloadp);
+TRADER* brs_login(int connfd, char*name);
+int brs_buy(TRADER* user, quantity_t quantity, funds_t price);
+int brs_sell(TRADER *user, quantity_t quantity, funds_t price);
 static orderid_t order = 0;
 
 void *brs_client_service(void *arg){
     int connfd = *(int*)arg;
     BRS_PACKET_HEADER *rev_hdr;
     void **rev_payloadp;
-    TRADER *user=NULL;
+    TRADER *user;
     BRS_STATUS_INFO * status = Malloc(sizeof(BRS_STATUS_INFO));
 
     free(arg);
     Pthread_detach(pthread_self());
     debug("[%d] Starting client service", connfd);
-    creg_register(client_registry, connfd);//??
 
     while(1){
         rev_hdr = Malloc(sizeof(BRS_PACKET_HEADER));
@@ -37,10 +37,21 @@ void *brs_client_service(void *arg){
         }
         if(rev_hdr->type==BRS_LOGIN_PKT && user ==NULL){
 
-            debug("[%d] LOGIN package recieved", connfd);
-            char* name;
 
-            if((name=brs_login(user,connfd,rev_hdr,rev_payloadp))==NULL) return NULL;
+            char *name = Malloc(rev_hdr->size);
+
+            if(memcpy(name,*rev_payloadp,rev_hdr->size)<0) return NULL;
+            creg_register(client_registry, connfd);//??
+            //debug("<= %d.%d: type=LOGIN, size=%d, user: '%s'", rev_hdr->timestamp_sec, rev_hdr->timestamp_nsec, rev_hdr->size, name);
+            free(rev_hdr);
+            free(rev_payloadp);
+            debug("[%d] LOGIN package recieved", connfd);
+
+            //LOGIN
+            user= brs_login(connfd, name);
+            if(user == NULL){
+                return NULL;//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            }
 
             //make pkg
             BRS_PACKET_HEADER* sed_hdr;
@@ -49,9 +60,10 @@ void *brs_client_service(void *arg){
                 free(name);
                 return NULL;
             }
-             //TRADER *trader = Malloc(sizeof( TRADER));
-            user= trader_login(connfd, name);
             trader_send_packet(user, sed_hdr,NULL);
+            //debug("[%d] LOGIN package recieved", connfd);
+            //convertToHostBytes(sed_hdr);
+            //debug("=> %d.%d: type=ACK, size=%d (no payload)", sed_hdr->timestamp_sec, sed_hdr->timestamp_nsec, sed_hdr->size);
             free(sed_hdr);
             free(name);
         }
@@ -80,7 +92,6 @@ void *brs_client_service(void *arg){
 
             }
             else if(rev_hdr->type==BRS_DEPOSIT_PKT){
-                debug("[%d] DEPOSIT package recieved", connfd);
 
                 //get the payload
                 int size = rev_hdr->size;
@@ -92,7 +103,10 @@ void *brs_client_service(void *arg){
                 free(p);
                 free(rev_hdr);
                 free(rev_payloadp);
+                debug("[%d] DEPOSIT package recieved", connfd);
+
                 trader_increase_balance(user, amount);
+
 
                 //make sending package
                 BRS_PACKET_HEADER* sed_hdr;
@@ -100,6 +114,7 @@ void *brs_client_service(void *arg){
                     free(sed_hdr);
                     continue;
                 }
+
                 //get status
                 exchange_get_status(exchange,status);
                 status->balance=htonl(ntohl(status->balance)+amount);
@@ -108,7 +123,6 @@ void *brs_client_service(void *arg){
                 free(sed_hdr);
             }
             else if(rev_hdr->type==BRS_WITHDRAW_PKT){
-                debug("[%d] WITHDRAW package recieved", connfd);
 
                 //get the payload
                 int size = rev_hdr->size;
@@ -120,6 +134,7 @@ void *brs_client_service(void *arg){
                 free(p);
                 free(rev_hdr);
                 free(rev_payloadp);
+                debug("[%d] WITHDRAW package recieved", connfd);
 
                 int pkg_type;
                 int pkg_size;
@@ -153,8 +168,6 @@ void *brs_client_service(void *arg){
                 free(sed_hdr);
             }
             else if(rev_hdr->type==BRS_ESCROW_PKT){
-                debug("[%d] ESCROW package recieved", connfd);
-
                 //get the payload
                 int size = rev_hdr->size;
                 BRS_ESCROW_INFO *p = Malloc(size*sizeof(BRS_ESCROW_INFO));
@@ -165,6 +178,8 @@ void *brs_client_service(void *arg){
                 free(p);
                 free(rev_hdr);
                 free(rev_payloadp);
+                debug("[%d] ESCROW package recieved", connfd);
+
                 trader_increase_inventory(user, quantity);
 
                 //make sending package
@@ -181,8 +196,6 @@ void *brs_client_service(void *arg){
                 free(sed_hdr);
             }
             else if(rev_hdr->type==BRS_RELEASE_PKT){
-                debug("[%d] RELEASE package recieved", connfd);
-
                 //get the payload
                 int size = rev_hdr->size;
                 BRS_ESCROW_INFO *p = Malloc(size*sizeof(BRS_ESCROW_INFO));
@@ -193,6 +206,8 @@ void *brs_client_service(void *arg){
                 free(p);
                 free(rev_hdr);
                 free(rev_payloadp);
+
+                debug("[%d] RELEASE package recieved", connfd);
 
                 int pkg_type;
                 int pkg_size;
@@ -226,13 +241,17 @@ void *brs_client_service(void *arg){
                 free(sed_hdr);
             }
             else if(rev_hdr->type==BRS_BUY_PKT){
+                //get the payload
+                BRS_ORDER_INFO* pkg = Malloc(sizeof(rev_hdr->size));
+                memcpy(pkg,*(BRS_ORDER_INFO**)rev_payloadp,rev_hdr->size);
+                pkg->quantity = ntohl(pkg->quantity);
+                pkg->price = ntohl(pkg->price);
+                free(rev_hdr);
+                free(rev_payloadp);
                 debug("[%d] BUY package recieved", connfd);
 
-                BRS_ORDER_INFO* p = brs_buy(user,connfd,rev_hdr,rev_payloadp);
-                quantity_t quantity = p->quantity;
-                funds_t price = p->price;
-                free(p);
-
+                quantity_t quantity =pkg->quantity;
+                funds_t price = pkg->price;
 
                 int pkg_type;
                 int pkg_size;
@@ -241,8 +260,7 @@ void *brs_client_service(void *arg){
                     pkg_size = sizeof(BRS_STATUS_INFO);
                     status->balance = htonl(ntohl(status->balance)-quantity*price);
                     status->orderid = htonl(++order);
-                    trader_decrease_inventory(user,quantity*price);
-                    exchange_post_buy(exchange,user,quantity,price);
+                    brs_buy(user, quantity, price);
                 }
                 else{
                     pkg_type = BRS_NACK_PKT;
@@ -266,6 +284,54 @@ void *brs_client_service(void *arg){
                     trader_send_packet(user, sed_hdr, NULL);
                 }
                 free(sed_hdr);
+            }
+            else if(rev_hdr->type==BRS_SELL_PKT){
+                //get the payload
+                BRS_ORDER_INFO* pkg = Malloc(sizeof(rev_hdr->size));
+                memcpy(pkg,*(BRS_ORDER_INFO**)rev_payloadp,rev_hdr->size);
+                pkg->quantity = ntohl(pkg->quantity);
+                pkg->price = ntohl(pkg->price);
+                free(rev_hdr);
+                free(rev_payloadp);
+                debug("[%d] SELL package recieved", connfd);
+
+                quantity_t quantity =pkg->quantity;
+                funds_t price = pkg->price;
+
+                int pkg_type;
+                int pkg_size;
+                if(quantity<=ntohl(status->inventory)){
+                    pkg_type = BRS_ACK_PKT;
+                    pkg_size = sizeof(BRS_STATUS_INFO);
+                    status->inventory = htonl(ntohl(status->inventory)-quantity);
+                    status->orderid = htonl(++order);
+                    brs_sell(user, quantity, price);
+                }
+                else{
+                    pkg_type = BRS_NACK_PKT;
+                    pkg_size = 0;
+                }
+
+                //make sending package
+                BRS_PACKET_HEADER* sed_hdr;
+                if((sed_hdr=create_sed_hdr(pkg_type,pkg_size)) ==NULL){
+                    free(sed_hdr);
+                    continue;
+                }
+                //get status
+                if(pkg_type==BRS_ACK_PKT){
+                    exchange_get_status(exchange,status);
+                    //status->balance=htonl(amount);
+
+                    trader_send_packet(user, sed_hdr, status);
+                }
+                else{
+                    trader_send_packet(user, sed_hdr, NULL);
+                }
+                free(sed_hdr);
+            }
+            else if(rev_hdr->type==BRS_CANCEL_PKT){
+                debug("hhhhhhh\n\n\n\nhhhh");
             }
         }
 
@@ -301,32 +367,29 @@ BRS_PACKET_HEADER * create_sed_hdr(BRS_PACKET_TYPE t,uint16_t s){
 }
 
 
-char* brs_login(TRADER* user, int connfd, BRS_PACKET_HEADER *rev_hdr,void **rev_payloadp){
-
-    //get the payload
-    int size = rev_hdr->size;
-    char *name = Malloc(size*sizeof(char));
-
-    if(memcpy(name,*rev_payloadp,size)<0) return NULL;
-
-    free(rev_hdr);
-    free(rev_payloadp);
-    //make sending package
+TRADER* brs_login(int connfd, char*name){
     debug("[%d] LOGIN '%s'",connfd,name);
-    return name;
+    TRADER* user = trader_login(connfd, name);
+    return user;
 }
 
 
-BRS_ORDER_INFO* brs_buy(TRADER* user, int connfd, BRS_PACKET_HEADER *rev_hdr,void **rev_payloadp){
-    BRS_ORDER_INFO* pkg = Malloc(sizeof(rev_hdr->size));
-    memcpy(pkg,*(BRS_ORDER_INFO**)rev_payloadp,rev_hdr->size);
-    pkg->quantity = ntohl(pkg->quantity);
-    pkg->price = ntohl(pkg->price);
+int brs_buy(TRADER *user, quantity_t quantity, funds_t price){
 
-    debug("brs_buy: quantity:%d, limit: %d",pkg->quantity,pkg->price);
+    debug("brs_buy: quantity:%d, limit: %d",quantity,price);
+    //trader_decrease_balance(user,quantity*price);
+    if(exchange_post_buy(exchange,user,quantity,price)>0){
+        return 0;
+    }
+    return -1;
+}
 
-    free(rev_hdr);
-    free(rev_payloadp);
-    return pkg;
+int brs_sell(TRADER *user, quantity_t quantity, funds_t price){
+    debug("brs_sell: quantity:%d, limit: %d",quantity,price);
+
+    if(exchange_post_sell(exchange,user,quantity,price)>0){
+        return 0;
+    }
+    return -1;
 
 }
