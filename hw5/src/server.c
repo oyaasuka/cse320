@@ -22,6 +22,7 @@ void *brs_client_service(void *arg){
     free(arg);
     Pthread_detach(pthread_self());
     debug("[%d] Starting client service", connfd);
+    creg_register(client_registry, connfd);//??
 
     while(1){
         rev_hdr = Malloc(sizeof(BRS_PACKET_HEADER));
@@ -30,7 +31,12 @@ void *brs_client_service(void *arg){
         if(proto_recv_packet(connfd,rev_hdr,rev_payloadp)==-1){//how to understand null?
             free(rev_hdr);
             free(rev_payloadp);
-            continue;
+            debug("[%d] Logging out trader",connfd);
+            //trader_logout(user);
+            debug("[%d] End client service",connfd);
+            creg_unregister(client_registry, connfd);
+
+            return NULL;
         }
         else{
             convertToHostBytes(rev_hdr);
@@ -41,7 +47,6 @@ void *brs_client_service(void *arg){
             char *name = Malloc(rev_hdr->size);
 
             if(memcpy(name,*rev_payloadp,rev_hdr->size)<0) return NULL;
-            creg_register(client_registry, connfd);//??
             //debug("<= %d.%d: type=LOGIN, size=%d, user: '%s'", rev_hdr->timestamp_sec, rev_hdr->timestamp_nsec, rev_hdr->size, name);
             free(rev_hdr);
             free(rev_payloadp);

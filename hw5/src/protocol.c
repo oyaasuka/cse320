@@ -11,7 +11,7 @@ int proto_send_packet(int fd, BRS_PACKET_HEADER *hdr, void *payload){
     if(payload!=NULL && payload_size>0){
         Rio_writen(fd, payload, payload_size);
     }
-
+    //debug("here");
     return 0;
 }
 
@@ -33,7 +33,6 @@ int proto_recv_packet(int fd, BRS_PACKET_HEADER *hdr, void **payloadp){
             return -1;
         }
     }
-    //debug("here");
     return 0;
 }
 

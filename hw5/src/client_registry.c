@@ -1,6 +1,7 @@
 #include "client_registry.h"
 #include "csapp.h"
 #include "debug.h"
+#include "trader.h"
 
 typedef struct client_registry{
     int *buf;
@@ -13,7 +14,7 @@ typedef struct client_registry{
 CLIENT_REGISTRY *creg_init(){//?
     int n = FD_SETSIZE-4;
     CLIENT_REGISTRY * cr = Malloc(sizeof(CLIENT_REGISTRY));
-    cr->buf = Malloc(n*sizeof(int));
+    cr->buf = Malloc(MAX_TRADERS);
     cr->length = n;
     cr->size = 0;
     Sem_init(&cr->mutex, 0, 1);
@@ -59,7 +60,7 @@ int creg_unregister(CLIENT_REGISTRY *cr, int fd){
             cr->size = cr->size-1;
             if(cr->size==0) V(&cr->empty);
             V(&cr->mutex);
-            debug("Unregister fd:%d, Registry size:%d",fd, cr->size);
+            debug("Unregister client fd %d (total connected:%d)",fd,cr->size);
             return 0;
         }
         i++;
