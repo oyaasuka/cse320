@@ -7,11 +7,10 @@
 
 void convertToHostBytes(BRS_PACKET_HEADER *hdr);
 TRADER* brs_login(int connfd, char*name);
-int brs_buy(TRADER* user, quantity_t quantity, funds_t price);
-int brs_sell(TRADER *user, quantity_t quantity, funds_t price);
+orderid_t brs_buy(TRADER* user, quantity_t quantity, funds_t price);
+orderid_t brs_sell(TRADER *user, quantity_t quantity, funds_t price);
 void convertPayloadToNetBytes(BRS_STATUS_INFO *P);
 
-static orderid_t order = 0;
 
 void *brs_client_service(void *arg){
     int connfd = *(int*)arg;
@@ -240,12 +239,12 @@ void *brs_client_service(void *arg){
 
                 BRS_STATUS_INFO * status = user->status;
                 if(quantity*price<=status->balance){
-                    brs_buy(user, quantity, price);
+                    orderid_t order= brs_buy(user, quantity, price);
                     exchange_get_status(exchange,status);
                     BRS_STATUS_INFO * data = Malloc(sizeof(BRS_STATUS_INFO));
                     memcpy(data, status,sizeof(BRS_STATUS_INFO));
                     pthread_mutex_unlock(&user->mutex);
-                    data->orderid = ++order;
+                    data->orderid = order;
                     convertPayloadToNetBytes(data);
                     trader_send_ack(user,data);
                 }
@@ -271,13 +270,13 @@ void *brs_client_service(void *arg){
                 pthread_mutex_lock(&user->mutex);
 
                 BRS_STATUS_INFO * status = user->status;
-                if(quantity*price<=status->balance){
-                    brs_sell(user, quantity, price);
+                if(quantity<=status->inventory){
+                    orderid_t order= brs_sell(user, quantity, price);
                     exchange_get_status(exchange,status);
                     BRS_STATUS_INFO * data = Malloc(sizeof(BRS_STATUS_INFO));
                     memcpy(data, status,sizeof(BRS_STATUS_INFO));
                     pthread_mutex_unlock(&user->mutex);
-                    data->orderid = ++order;
+                    data->orderid = order;
                     convertPayloadToNetBytes(data);
                     trader_send_ack(user,data);
                 }
@@ -311,22 +310,21 @@ TRADER* brs_login(int connfd, char*name){
 }
 
 
-int brs_buy(TRADER *user, quantity_t quantity, funds_t price){
-
+orderid_t brs_buy(TRADER *user, quantity_t quantity, funds_t price){
+    orderid_t order;
     debug("brs_buy: quantity:%d, limit: %d",quantity,price);
-    if(exchange_post_buy(exchange,user,quantity,price)>0){
-        debug("here1");
-        return 0;
+    if((order=exchange_post_buy(exchange,user,quantity,price))>0){
+        return order;
     }
     return -1;
 }
 
-int brs_sell(TRADER *user, quantity_t quantity, funds_t price){
+orderid_t brs_sell(TRADER *user, quantity_t quantity, funds_t price){
+    orderid_t order;
     debug("brs_sell: quantity:%d, limit: %d",quantity,price);
 
-    if(exchange_post_sell(exchange,user,quantity,price)>0){
-        debug("here2");
-        return 0;
+    if((order=exchange_post_sell(exchange,user,quantity,price))>0){
+        return order;
     }
     return -1;
 

@@ -130,16 +130,14 @@ int trader_send_packet(TRADER *trader, BRS_PACKET_HEADER *pkt, void *data){
     int fd = trader->fd;
 
 
-    if(type==BRS_ACK_PKT){
-        debug("Send packet (clientfd=%d, type=ACK) for trader [%s]", trader->fd, trader->name);
-        if(proto_send_packet(fd, pkt, data)<0) return -1;
-    }
-    else{
+    if(type==BRS_NACK_PKT){
         debug("Send packet (clientfd=%d, type=NACK) for trader [%s]", trader->fd, trader->name);
         if(proto_send_packet(fd, pkt, NULL)<0) return -1;
     }
-    free(pkt);
-    free(data);
+    else{
+        debug("Send packet (clientfd=%d, type=BRS_POSTED_PKT) for trader [%s]", trader->fd, trader->name);
+        if(proto_send_packet(fd, pkt, data)<0) return -1;
+    }
     pthread_mutex_unlock(&trader->mutex);
 
     return 0;
@@ -147,7 +145,6 @@ int trader_send_packet(TRADER *trader, BRS_PACKET_HEADER *pkt, void *data){
 
 
 int trader_broadcast_packet(BRS_PACKET_HEADER *pkt, void *data){//how to share data between files?
-    debug("here 3");
     pthread_mutex_lock(&map->mutex);
 
     TRADER *header = map->header;
@@ -172,6 +169,8 @@ int trader_send_ack(TRADER *trader, BRS_STATUS_INFO *info){
     if(trader_send_packet(trader, pkt, info)<0) {
         return -1;
     }
+    free(info);
+    free(pkt);
 
     return 0;
 }
@@ -211,7 +210,7 @@ int trader_decrease_balance(TRADER *trader, funds_t amount){
         debug("decrease balance: %d->%d",balance,trader->balance);
 
         pthread_mutex_unlock(&trader->mutex);
-        return amount;
+        return 0;
     }
     else{
 
@@ -244,7 +243,7 @@ int trader_decrease_inventory(TRADER *trader, quantity_t quantity){
         debug("decrease quantity: %d->%d",inventory,trader->inventory);
 
         pthread_mutex_unlock(&trader->mutex);
-        return quantity;
+        return 0;
     }
     else{
 

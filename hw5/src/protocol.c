@@ -11,7 +11,6 @@ int proto_send_packet(int fd, BRS_PACKET_HEADER *hdr, void *payload){
     if(payload!=NULL && payload_size>0){
         Rio_writen(fd, payload, payload_size);
     }
-    //debug("here");
     return 0;
 }
 
@@ -28,7 +27,7 @@ int proto_recv_packet(int fd, BRS_PACKET_HEADER *hdr, void **payloadp){
 
         *payloadp = Malloc(payload_size*sizeof(char));//!!!!!!
         if(Rio_readn(fd,*payloadp,payload_size)<payload_size){
-            debug("EOF on fd: %d",fd);
+            debug("aEOF on fd: %d",fd);
             errno = ENOENT;
             return -1;
         }
