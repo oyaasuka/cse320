@@ -1,29 +1,17 @@
-#include "trader.h"
 #include "debug.h"
 #include "csapp.h"
 #include "string.h"
+#include "help.h"
 
-typedef struct trader {
-    int fd;
-    char* name;
-    int ref;
-    quantity_t inventory;
-    funds_t balance;
-    TRADER* next;
-    pthread_mutex_t mutex;
-    pthread_mutexattr_t attr;
-}TRADER;
 
-typedef struct map
-{
-    TRADER* header;
-    int size;
-    pthread_mutex_t mutex;
-}MAP;
+TRADER* find_trader_in_map(MAP* map, int fd, char*name);
+BRS_PACKET_HEADER * create_sed_hdr(BRS_PACKET_TYPE t,uint16_t s);
+void convertToNetBytes(BRS_PACKET_HEADER *hdr);
 
-TRADER* find_trader(MAP* map, int fd, char*name);
 
+extern TRADER user;
 static MAP *map;
+//static orderid_t order = 0;
 
 int trader_init(){
     debug("initializing trader module");
@@ -35,9 +23,11 @@ int trader_init(){
 }
 
 void trader_fini(){
-    debug("finalizing trader module")
+    debug("finalizing trader module");
     TRADER* header = map->header;
     while(header!=NULL){
+        free(header->name);
+        free(header->status);
         free(header);
         header= header->next;
     }
@@ -46,20 +36,35 @@ void trader_fini(){
 
 TRADER *trader_login(int fd, char *name){
     TRADER *trader;
-    if((trader=find_trader(map,fd,name))==NULL){
+    int size= sizeof(name);
+    char* n = Malloc(size);
+    memcpy(n, name, size);
+
+    if((trader=find_trader_in_map(map,fd,name))==NULL){
         trader = Malloc(sizeof(TRADER));
         trader->fd = fd;
-        trader->name = name;
+        trader->name = n;
         trader->ref = 0;
         trader->inventory = 0;
         trader->balance = 0;
         trader->next = NULL;
+        trader->status = Malloc(sizeof(BRS_STATUS_INFO));
+        (*trader).status->balance = 0;               // Trader's account balance
+        (*trader).status->inventory = 0;          // Trader's inventory
+        (*trader).status->bid = 0;                   // Current highest bid price
+        (*trader).status->ask = 0;                   // Current lowest ask price
+        (*trader).status->last = 0;                  // Last trade price
+        (*trader).status->orderid = 0;             // Order ID (for BUY, SELL, CANCEL)
+        (*trader).status->quantity = 0;
         pthread_mutexattr_init(&trader->attr);
         pthread_mutexattr_settype(&trader->attr,PTHREAD_MUTEX_RECURSIVE);
         pthread_mutex_init(&trader->mutex,&trader->attr);
 
+        pthread_mutex_lock(&trader->mutex);
         pthread_mutex_lock(&map->mutex);
-        if(map->header==NULL) map->header = trader;
+        if(map->header==NULL) {
+            map->header = trader;
+        }
         else{
             TRADER* header = map->header;
             while(header->next!=NULL){
@@ -73,19 +78,24 @@ TRADER *trader_login(int fd, char *name){
         trader_ref(trader, "for newly created trader");
     }
     else{
+        pthread_mutex_lock(&trader->mutex);
         debug("Login existing trader");
     }
 
-    return trader_ref(trader, "because trader has logged in");;
+    trader->logged = 1;
+    pthread_mutex_unlock(&trader->mutex);
+    return trader_ref(trader, "because trader has logged in");
 }
 
 void trader_logout(TRADER *trader){
 
     pthread_mutex_lock(&trader->mutex);
-    debug("Log out trader [%s]",trader->name);
-    pthread_mutex_unlock(&trader->mutex);
 
+    debug("Log out trader [%s]",trader->name);
+    trader->logged = 0;
     trader_unref(trader, "because trader has logged out");
+
+    pthread_mutex_unlock(&trader->mutex);
 
 }
 
@@ -93,8 +103,10 @@ void trader_logout(TRADER *trader){
 TRADER *trader_ref(TRADER *trader, char *why){
 
     pthread_mutex_lock(&trader->mutex);
+
     trader->ref = trader->ref+1;
     debug("Increase ref on trader [%s] (%d->%d) %s",trader->name,trader->ref-1,trader->ref, why);
+
     pthread_mutex_unlock(&trader->mutex);
 
     return trader;
@@ -103,182 +115,181 @@ TRADER *trader_ref(TRADER *trader, char *why){
 void trader_unref(TRADER *trader, char *why){
 
     pthread_mutex_lock(&trader->mutex);
+
     trader->ref = trader->ref-1;
     debug("Decrease ref on trader [%s] (%d->%d) %s",trader->name,trader->ref,trader->ref-1, why);
+
     pthread_mutex_unlock(&trader->mutex);
 }
 
 
-
-TRADER* find_trader(MAP* map, int fd, char*name){
-
-    pthread_mutex_lock(&map->mutex);
-    TRADER* header = map->header;
-    while(header!=NULL){
-        if(header->fd==fd && header->name == name){
-            pthread_mutex_unlock(&map->mutex);
-
-            return header;
-        }
-    }
-    pthread_mutex_unlock(&map->mutex);
-
-    return NULL;
-}
-
-/*
- * Send a packet to the client for a trader.
- *
- * @param trader  The TRADER object for the client who should receive
- * the packet.
- * @param pkt  The packet to be sent.
- * @param data  Data payload to be sent, or NULL if none.
- * @return 0 if transmission succeeds, -1 otherwise.
- *
- * Once a client has connected and successfully logged in, this function
- * should be used to send packets to the client, as opposed to the lower-level
- * proto_send_packet() function.  The reason for this is that the present
- * function will obtain exclusive access to the trader before calling
- * proto_send_packet().  The fact that exclusive access is obtained before
- * sending means that multiple threads can safely call this function to send
- * to the client, and these calls will be properly serialized.
- */
 int trader_send_packet(TRADER *trader, BRS_PACKET_HEADER *pkt, void *data){
     pthread_mutex_lock(&trader->mutex);
 
     int type = pkt->type;
+    int fd = trader->fd;
+
 
     if(type==BRS_ACK_PKT){
         debug("Send packet (clientfd=%d, type=ACK) for trader [%s]", trader->fd, trader->name);
-        //trader_send_ack(trader,data);
+        if(proto_send_packet(fd, pkt, data)<0) return -1;
     }
     else{
         debug("Send packet (clientfd=%d, type=NACK) for trader [%s]", trader->fd, trader->name);
-        //trader_send_nack(trader);
+        if(proto_send_packet(fd, pkt, NULL)<0) return -1;
     }
-
-
+    free(pkt);
+    free(data);
     pthread_mutex_unlock(&trader->mutex);
 
     return 0;
 }
 
-/*
- * Broadcast a packet to all currently logged-in traders.
- *
- * @param pkt  The packet to be sent.
- * @param data  Data payload to be sent, or NULL if none.
- * @return 0 if broadcast succeeds, -1 otherwise.
- */
-int trader_broadcast_packet(BRS_PACKET_HEADER *pkt, void *data);
 
-/*
- * Send an ACK packet to the client for a trader.
- *
- * @param trader  The TRADER object for the client who should receive
- * the packet.
- * @param infop  Pointer to the optional data payload for this packet,
- * or NULL if there is to be no payload.
- * @return 0 if transmission succeeds, -1 otherwise.
- */
-int trader_send_ack(TRADER *trader, BRS_STATUS_INFO *info){
-    /*pthread_mutex_lock(&trader->mutex);
-    int fd = trader->fd;
-    int size = sizeof(BRS_STATUS_INFO);
+int trader_broadcast_packet(BRS_PACKET_HEADER *pkt, void *data){//how to share data between files?
+    debug("here 3");
+    pthread_mutex_lock(&map->mutex);
 
-    proto_send_packet(fd, BRS_PACKET_HEADER *hdr, void *payload);
+    TRADER *header = map->header;
+    while(header!=NULL){
+        if(header->logged==1){
+            if(trader_send_packet(header,pkt,data)<0)
+                debug("trader_broadcast_packet: wrong");
+        }
+        header = header->next;
+    }
 
-    pthread_mutex_unlock(&trader->mutex);*/
+
+    pthread_mutex_unlock(&map->mutex);
     return 0;
 }
 
-/*
- * Send an NACK packet to the client for a trader.
- *
- * @param trader  The TRADER object for the client who should receive
- * the packet.
- * @return 0 if transmission succeeds, -1 otherwise.
- */
-int trader_send_nack(TRADER *trader);
 
-/*
- * Increase the balance for a trader.
- *
- * @param trader  The trader whose balance is to be increased.
- * @param amount  The amount by which the balance is to be increased.
- */
+int trader_send_ack(TRADER *trader, BRS_STATUS_INFO *info){
+
+    BRS_PACKET_HEADER *pkt = create_sed_hdr(BRS_ACK_PKT,sizeof(BRS_STATUS_INFO));
+
+    if(trader_send_packet(trader, pkt, info)<0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+
+int trader_send_nack(TRADER *trader){
+
+    BRS_PACKET_HEADER *pkt = create_sed_hdr(BRS_NACK_PKT,0);
+
+    if(trader_send_packet(trader, pkt, NULL)<0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+
 void trader_increase_balance(TRADER *trader, funds_t amount){
 
     pthread_mutex_lock(&trader->mutex);
     trader->balance = trader->balance + amount;
+    (*trader).status->balance = trader->balance;
     debug("increase balance: %d->%d",trader->balance-amount,trader->balance);
+
     pthread_mutex_unlock(&trader->mutex);
 }
 
-/*
- * Attempt to decrease the balance for a trader.
- *
- * @param trader  The trader whose balance is to be decreased.
- * @param amount  The amount by which the balance is to be decreased.
- * @return 0 if the original balance is at least as great as the
- * amount of decrease, -1 otherwise.
- */
+
 int trader_decrease_balance(TRADER *trader, funds_t amount){
 
     pthread_mutex_lock(&trader->mutex);
+
     funds_t balance = trader->balance;
     if(balance>=amount){
         trader->balance = balance - amount;
+        (*trader).status->balance = trader->balance;
         debug("decrease balance: %d->%d",balance,trader->balance);
+
         pthread_mutex_unlock(&trader->mutex);
         return amount;
     }
     else{
+
         pthread_mutex_unlock(&trader->mutex);
         return -1;
     }
 
 }
 
-/*
- * Increase the inventory for a trader by a specified quantity.
- *
- * @param trader  The trader whose inventory is to be increased.
- * @param amount  The amount by which the inventory is to be increased.
- */
+
 void trader_increase_inventory(TRADER *trader, quantity_t quantity){
 
     pthread_mutex_lock(&trader->mutex);
+
     trader->inventory = trader->inventory + quantity;
+    (*trader).status->inventory = trader->inventory;
     debug("increase quantity: %d->%d",trader->inventory-quantity,trader->inventory);
+
     pthread_mutex_unlock(&trader->mutex);
 }
 
-/*
- * Attempt to decrease the inventory for a trader by a specified quantity.
- *
- * @param trader  The trader whose inventory is to be decreased.
- * @param amount  The amount by which the inventory is to be decreased.
- * @return 0 if the original inventory is at least as great as the
- * amount of decrease, -1 otherwise.
- */
 int trader_decrease_inventory(TRADER *trader, quantity_t quantity){
 
     pthread_mutex_lock(&trader->mutex);
+
     quantity_t inventory = trader->inventory;
     if(inventory>=quantity){
         trader->inventory = inventory - quantity;
+        (*trader).status->inventory = trader->inventory;
         debug("decrease quantity: %d->%d",inventory,trader->inventory);
+
         pthread_mutex_unlock(&trader->mutex);
         return quantity;
     }
     else{
+
         pthread_mutex_unlock(&trader->mutex);
         return -1;
     }
 }
 
+BRS_PACKET_HEADER * create_sed_hdr(BRS_PACKET_TYPE t,uint16_t s){
+    struct timespec current;
+    if(clock_gettime(CLOCK_MONOTONIC, &current)!=0){
+            return NULL;
+    }
+    BRS_PACKET_HEADER *sed_hdr = Malloc(sizeof(BRS_PACKET_HEADER));
+    sed_hdr->type = t;
+    sed_hdr->size = s;
+    sed_hdr->timestamp_sec = current.tv_sec;
+    sed_hdr->timestamp_nsec = current.tv_nsec;
+    convertToNetBytes(sed_hdr);
+    return sed_hdr;
+}
 
 
+void convertToNetBytes(BRS_PACKET_HEADER *hdr){
+    hdr->size = htons(hdr->size);
+    hdr->timestamp_sec = htonl(hdr->timestamp_sec);
+    hdr->timestamp_nsec = htonl(hdr->timestamp_nsec);
 
+}
 
+TRADER* find_trader_in_map(MAP* map, int fd, char*name){
+
+    pthread_mutex_lock(&map->mutex);
+
+    TRADER* header = map->header;
+    while(header!=NULL){
+        //debug("%s %s",header->name,name);
+        if(strcmp(header->name,name)==0){
+            header->fd = fd;
+            pthread_mutex_unlock(&map->mutex);
+            return header;
+        }
+        header = header->next;
+    }
+
+    pthread_mutex_unlock(&map->mutex);
+    return NULL;
+}
