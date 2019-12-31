@@ -1,0 +1,60 @@
+Reading in rolodex from /home/student/.rolodex.dat
+5 entries listed
+
+
+TMC ROLODEX, Version 2.0
+
+
+        TOP LEVEL MENU
+
+  +  :  add a new entry
+  %  :  scan the rolodex entry by entry
+  $  :  search by some item other than 'Name'
+  *  :  save any changes made so far
+  !  :  pretty print the rolodex database to a disk file
+  \  :  exit (any changes you've made will be saved)
+
+To search for an entry by name, just type in the name.
+To update or delete an entry, first find it by searching.
+
+Select option (? for help): 1. Name
+2. Work Phone
+3. Home Phone
+4. Company
+5. Work Address
+6. Home Address
+7. Remarks
+8. A user created item name
+
+Number of item to search by? Name of user-defined field? Enter string to search for: Entries that match 'November' :
+
+1. 	Debbie B. Smith
+2. 	Laura S. Woods
+
+Type number of the entry you wish to view,
+or type RETURN to view each entry one by one,
+or type '\' to go back to the main menu.
+
+: Not a valid number... Please try again
+Entries that match 'November' :
+
+1. 	Debbie B. Smith
+2. 	Laura S. Woods
+
+Type number of the entry you wish to view,
+or type RETURN to view each entry one by one,
+or type '\' to go back to the main menu.
+
+:         TOP LEVEL MENU
+
+  +  :  add a new entry
+  %  :  scan the rolodex entry by entry
+  $  :  search by some item other than 'Name'
+  *  :  save any changes made so far
+  !  :  pretty print the rolodex database to a disk file
+  \  :  exit (any changes you've made will be saved)
+
+To search for an entry by name, just type in the name.
+To update or delete an entry, first find it by searching.
+
+Select option (? for help): 
